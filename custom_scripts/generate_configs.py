@@ -25,13 +25,16 @@ def generate_configs(
         dataset_path = dataset_root / dataset_name
         train_anno_path = dataset_path / "annotations/instances_train.json"
         val_anno_path = dataset_path / "annotations/instances_val.json"
+        test_anno_path = dataset_path / "annotations/instances_test.json"
         train_image_prefix = "images/train"
         val_image_prefix = "images/val"
+        test_image_prefix = "images/test"
 
         output_path.mkdir(parents=True, exist_ok=True)
         assert dataset_path.exists(), f"dataset_path does not exist: {dataset_path}"
         assert train_anno_path.exists(), f"train_anno_path does not exist: {train_anno_path}"
         assert val_anno_path.exists(), f"val_anno_path does not exist: {val_anno_path}"
+        assert test_anno_path.exists(), f"test_anno_path does not exist: {test_anno_path}"
         assert (dataset_path / train_image_prefix).exists(), f"train_image_prefix does not exist: {dataset_path / train_image_prefix}"
         assert (dataset_path / val_image_prefix).exists(), f"val_image_prefix does not exist: {dataset_path / val_image_prefix}"
 
@@ -60,10 +63,14 @@ def generate_configs(
         cfg.val_dataloader.dataset.data_prefix.img = str(val_image_prefix)
         cfg.val_dataloader.dataset.metainfo = metainfo
 
-        cfg.test_dataloader = cfg.val_dataloader
+        cfg.test_dataloader.batch_size = 1
+        cfg.test_dataloader.dataset.data_root = str(dataset_path)
+        cfg.test_dataloader.dataset.ann_file = str("annotations/instances_test.json")
+        cfg.test_dataloader.dataset.data_prefix.img = str(test_image_prefix)
+        cfg.test_dataloader.dataset.metainfo = metainfo
 
         cfg.val_evaluator.ann_file = str(val_anno_path)
-        cfg.test_evaluator.ann_file = cfg.val_evaluator.ann_file
+        cfg.test_evaluator.ann_file = str(test_anno_path)
 
         cfg.work_dir = str(output_path)
 
