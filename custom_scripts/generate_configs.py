@@ -2,6 +2,8 @@ from typing import List
 from pathlib import Path
 from mmengine.config import Config
 
+from datumaro.components.dataset import Dataset
+from datumaro.components.annotation import AnnotationType
 
 def generate_configs(
         batch_size: int,
@@ -16,13 +18,17 @@ def generate_configs(
     cfg = Config.fromfile(config_path)
     cfg.load_from = load_from
 
-    for dataset in dataset_list:
-        dataset_name = dataset["name"]
-        dataset_labels = dataset["labels"]
-        metainfo = dict(classes=dataset_labels,)
-        num_classes = len(dataset_labels)
+    for dataset_name in dataset_list:
         output_path = output_root / dataset_name / ""
         dataset_path = dataset_root / dataset_name
+
+        daturmaro_ds = Dataset.import_from(path=dataset_path, format='coco')
+        dataset_labels = [
+            label_item.name for label_item in daturmaro_ds.categories().get(AnnotationType.label, None).items
+        ]
+        metainfo = dict(classes=dataset_labels,)
+        num_classes = len(dataset_labels)
+
         train_anno_path = dataset_path / "annotations/instances_train.json"
         val_anno_path = dataset_path / "annotations/instances_val.json"
         test_anno_path = dataset_path / "annotations/instances_test.json"
@@ -87,8 +93,8 @@ if __name__ == '__main__':
     # load_from = "https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_s_8xb32-300e_coco/rtmdet-ins_s_8xb32-300e_coco_20221121_212604-fdc5d7ec.pth"
 
     batch_size = 16
-    vitens_coliform = dict(name="Vitens-Coliform-coco", labels=["coliform"])
-    vitens_aeromonas = dict(name="Vitens-Aeromonas-coco", labels=["aeromonas"])
+    vitens_coliform = "Vitens-Coliform-coco"
+    vitens_aeromonas = "Vitens-Aeromonas-coco"
 
     dataset_list = [vitens_coliform, vitens_aeromonas]
 
