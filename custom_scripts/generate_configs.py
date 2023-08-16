@@ -36,8 +36,17 @@ def generate_configs(
         assert (dataset_path / val_image_prefix).exists(), f"val_image_prefix does not exist: {dataset_path / val_image_prefix}"
 
         cfg.model.bbox_head.num_classes = num_classes
+
         cfg.default_hooks.checkpoint.pop('max_keep_ckpts', None)
         cfg.default_hooks.checkpoint.save_best = 'auto'
+
+        cfg.custom_hooks.append(
+            dict(
+                type='EarlyStoppingHook',
+                monitor='coco/segm_mAP',
+                min_delta=0.01,
+                patience=10),
+        )
 
         cfg.train_dataloader.batch_size = batch_size
         cfg.train_dataloader.dataset.data_root = str(dataset_path)
@@ -62,13 +71,13 @@ def generate_configs(
 
 
 if __name__ == '__main__':
-    # config = "rtmdet/rtmdet-ins_tiny_8xb32-300e_coco.py"
-    # folder_name = "rtmdet-ins_tiny"
-    # load_from = "https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_tiny_8xb32-300e_coco/rtmdet-ins_tiny_8xb32-300e_coco_20221130_151727-ec670f7e.pth"
+    config = "rtmdet/rtmdet-ins_tiny_8xb32-300e_coco.py"
+    folder_name = "rtmdet-ins_tiny"
+    load_from = "https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_tiny_8xb32-300e_coco/rtmdet-ins_tiny_8xb32-300e_coco_20221130_151727-ec670f7e.pth"
 
-    config = "rtmdet/rtmdet-ins_s_8xb32-300e_coco.py"
-    folder_name = "rtmdet-ins_s"
-    load_from = "https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_s_8xb32-300e_coco/rtmdet-ins_s_8xb32-300e_coco_20221121_212604-fdc5d7ec.pth"
+    # config = "rtmdet/rtmdet-ins_s_8xb32-300e_coco.py"
+    # folder_name = "rtmdet-ins_s"
+    # load_from = "https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_s_8xb32-300e_coco/rtmdet-ins_s_8xb32-300e_coco_20221121_212604-fdc5d7ec.pth"
 
     batch_size = 16
     vitens_coliform = dict(name="Vitens-Coliform-coco", labels=["coliform"])
