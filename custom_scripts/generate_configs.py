@@ -1,9 +1,12 @@
+import copy
+
 from typing import List
 from pathlib import Path
 from mmengine.config import Config
 
 from datumaro.components.dataset import Dataset
 from datumaro.components.annotation import AnnotationType
+
 
 def generate_configs(
         batch_size: int,
@@ -19,6 +22,8 @@ def generate_configs(
     cfg.load_from = load_from
 
     for dataset_name in dataset_list:
+        _cfg = copy.deepcopy(cfg)
+
         output_path = output_root / dataset_name / ""
         dataset_path = dataset_root / dataset_name
 
@@ -44,12 +49,12 @@ def generate_configs(
         assert (dataset_path / train_image_prefix).exists(), f"train_image_prefix does not exist: {dataset_path / train_image_prefix}"
         assert (dataset_path / val_image_prefix).exists(), f"val_image_prefix does not exist: {dataset_path / val_image_prefix}"
 
-        cfg.model.bbox_head.num_classes = num_classes
+        _cfg.model.bbox_head.num_classes = num_classes
 
-        cfg.default_hooks.checkpoint.pop('max_keep_ckpts', None)
-        cfg.default_hooks.checkpoint.save_best = 'auto'
+        _cfg.default_hooks.checkpoint.pop('max_keep_ckpts', None)
+        _cfg.default_hooks.checkpoint.save_best = 'auto'
 
-        cfg.custom_hooks.append(
+        _cfg.custom_hooks.append(
             dict(
                 type='EarlyStoppingHook',
                 monitor='coco/segm_mAP',
@@ -57,30 +62,54 @@ def generate_configs(
                 patience=10),
         )
 
-        cfg.train_dataloader.batch_size = batch_size
-        cfg.train_dataloader.dataset.data_root = str(dataset_path)
-        cfg.train_dataloader.dataset.ann_file = str("annotations/instances_train.json")
-        cfg.train_dataloader.dataset.data_prefix.img = str(train_image_prefix)
-        cfg.train_dataloader.dataset.metainfo = metainfo
+        _cfg.train_dataloader.batch_size = batch_size
+        _cfg.train_dataloader.dataset.data_root = str(dataset_path)
+        _cfg.train_dataloader.dataset.ann_file = str("annotations/instances_train.json")
+        _cfg.train_dataloader.dataset.data_prefix.img = str(train_image_prefix)
+        _cfg.train_dataloader.dataset.metainfo = metainfo
 
-        cfg.val_dataloader.batch_size = 1
-        cfg.val_dataloader.dataset.data_root = str(dataset_path)
-        cfg.val_dataloader.dataset.ann_file = str("annotations/instances_val.json")
-        cfg.val_dataloader.dataset.data_prefix.img = str(val_image_prefix)
-        cfg.val_dataloader.dataset.metainfo = metainfo
+        # simplify dataset pipeline
+        _cfg.train_dataloader.dataset.pipeline = [
+            dict(type='LoadImageFromFile', backend_args=None),
+            dict(
+                type='LoadAnnotations',
+                with_bbox=True,
+                with_mask=True,
+                poly2mask=False),
+            dict(type='Resize', scale=(640, 640), keep_ratio=True),
+            dict(type='RandomFlip', prob=0.5),
+            dict(
+                type='Pad', size=(640, 640),
+                pad_val=dict(img=(114, 114, 114))),
+            dict(type='FilterAnnotations', min_gt_bbox_wh=(1, 1)),
+            dict(type='PackDetInputs')
+        ]
 
-        cfg.test_dataloader.batch_size = 1
-        cfg.test_dataloader.dataset.data_root = str(dataset_path)
-        cfg.test_dataloader.dataset.ann_file = str("annotations/instances_test.json")
-        cfg.test_dataloader.dataset.data_prefix.img = str(test_image_prefix)
-        cfg.test_dataloader.dataset.metainfo = metainfo
+        # pop pipeline switch hook
+        custom_hooks = []
+        for hook in _cfg.custom_hooks:
+            if hook['type'] != 'PipelineSwitchHook':
+                custom_hooks.append(hook)
+        _cfg.custom_hooks = custom_hooks
 
-        cfg.val_evaluator.ann_file = str(val_anno_path)
-        cfg.test_evaluator.ann_file = str(test_anno_path)
+        _cfg.val_dataloader.batch_size = 1
+        _cfg.val_dataloader.dataset.data_root = str(dataset_path)
+        _cfg.val_dataloader.dataset.ann_file = str("annotations/instances_val.json")
+        _cfg.val_dataloader.dataset.data_prefix.img = str(val_image_prefix)
+        _cfg.val_dataloader.dataset.metainfo = metainfo
 
-        cfg.work_dir = str(output_path)
+        _cfg.test_dataloader.batch_size = 1
+        _cfg.test_dataloader.dataset.data_root = str(dataset_path)
+        _cfg.test_dataloader.dataset.ann_file = str("annotations/instances_test.json")
+        _cfg.test_dataloader.dataset.data_prefix.img = str(test_image_prefix)
+        _cfg.test_dataloader.dataset.metainfo = metainfo
 
-        cfg.dump(output_path / "config.py")
+        _cfg.val_evaluator.ann_file = str(val_anno_path)
+        _cfg.test_evaluator.ann_file = str(test_anno_path)
+
+        _cfg.work_dir = str(output_path)
+
+        _cfg.dump(output_path / "config.py")
 
 
 if __name__ == '__main__':
