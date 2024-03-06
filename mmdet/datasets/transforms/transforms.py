@@ -7,7 +7,6 @@ from typing import List, Optional, Sequence, Tuple, Union
 
 import cv2
 import mmcv
-import numpy
 import numpy as np
 from mmcv.image import imresize
 from mmcv.image.geometric import _scale_size
@@ -1767,8 +1766,10 @@ class Albu(BaseTransform):
                     results['masks'] = np.array(
                         [results['masks'][i] for i in results['idx_mapper']])
                     results['masks'] = ori_masks.__class__(
-                        results['masks'], ori_masks.height, ori_masks.width)
-
+                        results['masks'],
+                        results['masks'][0].shape[0],
+                        results['masks'][0].shape[1],
+                    )
                 if (not len(results['idx_mapper'])
                         and self.skip_img_without_anno):
                     return None

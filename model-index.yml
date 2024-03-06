@@ -98,3 +98,5 @@ Import:
   - configs/masktrack_rcnn/metafile.yml
   - configs/glip/metafile.yml
   - configs/ddq/metafile.yml
+  - configs/grounding_dino/metafile.yml
+  - configs/mm_grounding_dino/metafile.yml
