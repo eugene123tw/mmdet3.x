@@ -18,6 +18,8 @@ from ..layers import DetrTransformerDecoder, SinePositionalEncoding
 from ..utils import multi_apply, preprocess_panoptic_gt
 from .anchor_free_head import AnchorFreeHead
 
+# mypy: ignore-errors
+
 
 @MODELS.register_module()
 class MaskFormerHead(AnchorFreeHead):

@@ -1,5 +1,5 @@
 _base_ = [
-    "./datasets/wgisd.py"
+    "./datasets/berry23.py"
 ]
 
 
@@ -45,12 +45,7 @@ model = dict(
         norm_cfg=dict(requires_grad=False, type='BN'),
         norm_eval=True,
         num_stages=4,
-        out_indices=(
-            0,
-            1,
-            2,
-            3,
-        ),
+        out_indices=(0, 1, 2, 3),
         style='pytorch',
         type='ResNet'),
     data_preprocessor=data_preprocessor,
@@ -59,7 +54,7 @@ model = dict(
         init_cfg=None,
         loss_panoptic=None,
         num_stuff_classes=0,
-        num_things_classes=5,
+        num_things_classes=1,
         type='MaskFormerFusionHead'),
     panoptic_head=dict(
         enforce_decoder_input_project=False,
@@ -71,7 +66,7 @@ model = dict(
             2048,
         ],
         loss_cls=dict(
-            class_weight=[1.0] * 5 + [0.1],
+            class_weight=[1.0] * 1 + [0.1],
             loss_weight=2.0,
             reduction='mean',
             type='CrossEntropyLoss',
@@ -91,7 +86,7 @@ model = dict(
             use_sigmoid=True),
         num_queries=100,
         num_stuff_classes=0,
-        num_things_classes=5,
+        num_things_classes=1,
         num_transformer_feat_level=3,
         out_channels=256,
         pixel_decoder=dict(
@@ -217,7 +212,7 @@ param_scheduler = dict(
 
 resume = False
 
-train_cfg = dict(type='EpochBasedTrainLoop', max_epochs=50, val_interval=1)
+train_cfg = dict(type='EpochBasedTrainLoop', max_epochs=15, val_interval=1)
 test_cfg = dict(type='TestLoop')
 val_cfg = dict(type='ValLoop')
 

@@ -1,16 +1,16 @@
 dataset_type = 'CocoDataset'
-data_root = '/home/yuchunli/_DATASET/BlueBerry23.v1i.coco-mmdetection/'
+data_root = '/home/yuchunli/_DATASET/Vitens-Coliform-coco/'
 backend_args = None
 
 metainfo = {
     'classes': (
-        'berry'
+        'coliform'
     ),
 }
 
 train_pipeline = [
     dict(type='LoadImageFromFile', backend_args=None),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True, poly2mask=False),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
     dict(type='Resize', scale=(1024, 1024), keep_ratio=True),
     dict(type='RandomFlip', prob=0.5),
     dict(type='PackDetInputs')

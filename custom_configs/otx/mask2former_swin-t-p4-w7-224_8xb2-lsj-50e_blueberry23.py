@@ -1,7 +1,6 @@
 _base_ = [
-    "./datasets/wgisd.py"
+    "./datasets/berry23.py"
 ]
-
 
 batch_augments = [
     dict(
@@ -39,39 +38,60 @@ data_preprocessor = dict(
 
 model = dict(
     backbone=dict(
-        depth=50,
+        attn_drop_rate=0.0,
+        convert_weights=True,
+        depths=[
+            2,
+            2,
+            6,
+            2,
+        ],
+        drop_path_rate=0.3,
+        drop_rate=0.0,
+        embed_dims=96,
         frozen_stages=-1,
-        init_cfg=dict(checkpoint='torchvision://resnet50', type='Pretrained'),
-        norm_cfg=dict(requires_grad=False, type='BN'),
-        norm_eval=True,
-        num_stages=4,
+        init_cfg=dict(
+            checkpoint=
+            'https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth',
+            type='Pretrained'),
+        mlp_ratio=4,
+        num_heads=[
+            3,
+            6,
+            12,
+            24,
+        ],
         out_indices=(
             0,
             1,
             2,
             3,
         ),
-        style='pytorch',
-        type='ResNet'),
+        patch_norm=True,
+        qk_scale=None,
+        qkv_bias=True,
+        type='SwinTransformer',
+        window_size=7,
+        with_cp=False),
     data_preprocessor=data_preprocessor,
     init_cfg=None,
     panoptic_fusion_head=dict(
         init_cfg=None,
         loss_panoptic=None,
         num_stuff_classes=0,
-        num_things_classes=5,
+        num_things_classes=1,
         type='MaskFormerFusionHead'),
     panoptic_head=dict(
         enforce_decoder_input_project=False,
         feat_channels=256,
         in_channels=[
-            256,
-            512,
-            1024,
-            2048,
+            96,
+            192,
+            384,
+            768,
         ],
         loss_cls=dict(
-            class_weight=[1.0] * 5 + [0.1],
+            class_weight=[1.0] * 1 + [0.1],
             loss_weight=2.0,
             reduction='mean',
             type='CrossEntropyLoss',
@@ -91,7 +111,7 @@ model = dict(
             use_sigmoid=True),
         num_queries=100,
         num_stuff_classes=0,
-        num_things_classes=5,
+        num_things_classes=1,
         num_transformer_feat_level=3,
         out_channels=256,
         pixel_decoder=dict(
@@ -232,5 +252,5 @@ visualizer = dict(
 
 
 launcher = 'none'
-load_from = "https://download.openmmlab.com/mmdetection/v3.0/mask2former/mask2former_r50_8xb2-lsj-50e_coco/mask2former_r50_8xb2-lsj-50e_coco_20220506_191028-41b088b6.pth"
+load_from = "https://download.openmmlab.com/mmdetection/v3.0/mask2former/mask2former_swin-t-p4-w7-224_8xb2-lsj-50e_coco/mask2former_swin-t-p4-w7-224_8xb2-lsj-50e_coco_20220508_091649-01b0f990.pth"
 log_level = 'INFO'
