@@ -347,7 +347,7 @@ train_cfg = dict(
 )
 train_dataloader = dict(
     batch_sampler=None,
-    batch_size=32,
+    batch_size=16,
     dataset=dict(
         ann_file="annotations/instances_train.json",
         backend_args=None,
