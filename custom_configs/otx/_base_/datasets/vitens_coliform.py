@@ -1,6 +1,6 @@
 # dataset settings
-dataset_type = 'CocoDataset'
-data_root = '/home/yuchunli/_DATASET/Vitens-Coliform-coco/'
+dataset_type = "CocoDataset"
+data_root = "/home/yuchunli/_DATASET/Vitens-Coliform-coco/"
 
 # file_client_args = dict(
 #     backend='petrel',
@@ -8,69 +8,74 @@ data_root = '/home/yuchunli/_DATASET/Vitens-Coliform-coco/'
 #         './data/': 's3://openmmlab/datasets/detection/',
 #         'data/': 's3://openmmlab/datasets/detection/'
 #     }))
-file_client_args = dict(backend='disk')
+file_client_args = dict(backend="disk")
 
 metainfo = dict(
-    classes=('coliform', ),
+    classes=("coliform",),
 )
 
 scale = (1344, 1344)
 
 train_pipeline = [
-    dict(type='LoadImageFromFile', file_client_args=file_client_args),
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
-    dict(type='Resize', scale=scale, keep_ratio=True),
-    dict(type='RandomFlip', prob=0.5),
-    dict(type='PackDetInputs')
+    dict(type="LoadImageFromFile", file_client_args=file_client_args),
+    dict(type="LoadAnnotations", with_bbox=True, with_mask=True),
+    dict(type="Resize", scale=scale, keep_ratio=True),
+    dict(type="RandomFlip", prob=0.5),
+    dict(type="PackDetInputs"),
 ]
 
 test_pipeline = [
-    dict(type='LoadImageFromFile', file_client_args=file_client_args),
-    dict(type='Resize', scale=scale, keep_ratio=True),
+    dict(type="LoadImageFromFile", file_client_args=file_client_args),
+    dict(type="Resize", scale=scale, keep_ratio=True),
     # If you don't have a gt annotation, delete the pipeline
-    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(type="LoadAnnotations", with_bbox=True, with_mask=True),
     dict(
-        type='PackDetInputs',
-        meta_keys=('img_id', 'img_path', 'ori_shape', 'img_shape',
-                   'scale_factor'))
+        type="PackDetInputs",
+        meta_keys=("img_id", "img_path", "ori_shape", "img_shape", "scale_factor"),
+    ),
 ]
 
 train_dataloader = dict(
     batch_size=8,
     num_workers=2,
     persistent_workers=True,
-    sampler=dict(type='DefaultSampler', shuffle=True),
-    batch_sampler=dict(type='AspectRatioBatchSampler'),
+    sampler=dict(type="DefaultSampler", shuffle=True),
+    batch_sampler=dict(type="AspectRatioBatchSampler"),
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file='annotations/instances_train.json',
-        data_prefix=dict(img='images/train/'),
+        ann_file="annotations/instances_train.json",
+        data_prefix=dict(img="images/train/"),
         filter_cfg=dict(filter_empty_gt=True, min_size=32),
         pipeline=train_pipeline,
-        metainfo=metainfo))
+        metainfo=metainfo,
+    ),
+)
 
 val_dataloader = dict(
     batch_size=4,
     num_workers=2,
     persistent_workers=True,
     drop_last=False,
-    sampler=dict(type='DefaultSampler', shuffle=False),
+    sampler=dict(type="DefaultSampler", shuffle=False),
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file='annotations/instances_val.json',
-        data_prefix=dict(img='images/val/'),
+        ann_file="annotations/instances_val.json",
+        data_prefix=dict(img="images/val/"),
         test_mode=True,
         pipeline=test_pipeline,
-        metainfo=metainfo))
+        metainfo=metainfo,
+    ),
+)
 test_dataloader = val_dataloader
 
 val_evaluator = dict(
-    type='CocoMetric',
-    ann_file=data_root + 'annotations/instances_val.json',
-    metric=['bbox', 'segm'],
-    format_only=False)
+    type="CocoMetric",
+    ann_file=data_root + "annotations/instances_val.json",
+    metric=["bbox", "segm"],
+    format_only=False,
+)
 test_evaluator = val_evaluator
 
 # inference on test dataset and
