@@ -19,6 +19,5 @@ BLUEBERRY=blueberries-roboflow
 DATASET_ARRAY=(${COLIFORM} ${COLIFORM_24} ${AEROMONAS} ${DOTA} ${WGIDS} ${ALUMUNIUM} ${CHICKEN} ${FASHION} ${SKIN} ${POOL} ${BLUEBERRY})
 
 for dataset in ${DATASET_ARRAY[@]}; do
-    python tools/train.py ${WORK_DIR}/$dataset/config.py 
+    python tools/train.py ${WORK_DIR}/$dataset/config.py
 done
-
