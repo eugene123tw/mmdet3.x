@@ -11,5 +11,5 @@ class DummyResNet(ResNet):
     """
 
     def __init__(self, **kwargs) -> None:
-        print('Hello world!')
+        print("Hello world!")
         super().__init__(**kwargs)

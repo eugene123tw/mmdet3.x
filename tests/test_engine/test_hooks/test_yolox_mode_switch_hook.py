@@ -6,10 +6,8 @@ from mmdet.engine.hooks import YOLOXModeSwitchHook
 
 
 class TestYOLOXModeSwitchHook(TestCase):
-
-    @patch('mmdet.engine.hooks.yolox_mode_switch_hook.is_model_wrapper')
-    def test_is_model_wrapper_and_persistent_workers_on(
-            self, mock_is_model_wrapper):
+    @patch("mmdet.engine.hooks.yolox_mode_switch_hook.is_model_wrapper")
+    def test_is_model_wrapper_and_persistent_workers_on(self, mock_is_model_wrapper):
         mock_is_model_wrapper.return_value = True
         runner = Mock()
         runner.model = Mock()
@@ -52,7 +50,7 @@ class TestYOLOXModeSwitchHook(TestCase):
         self.assertFalse(hook._restart_dataloader)
         self.assertTrue(runner.train_dataloader._DataLoader__initialized)
 
-    @patch('mmdet.engine.hooks.yolox_mode_switch_hook.is_model_wrapper')
+    @patch("mmdet.engine.hooks.yolox_mode_switch_hook.is_model_wrapper")
     def test_initialize_after_switching(self, mock_is_model_wrapper):
         # This simulates the resumption after the switching.
         mock_is_model_wrapper.return_value = True

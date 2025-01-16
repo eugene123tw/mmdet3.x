@@ -4,10 +4,12 @@ import torch.nn.functional as F
 from torch import Tensor
 
 
-def embed_similarity(key_embeds: Tensor,
-                     ref_embeds: Tensor,
-                     method: str = 'dot_product',
-                     temperature: int = -1) -> Tensor:
+def embed_similarity(
+    key_embeds: Tensor,
+    ref_embeds: Tensor,
+    method: str = "dot_product",
+    temperature: int = -1,
+) -> Tensor:
     """Calculate feature similarity from embeddings.
 
     Args:
@@ -21,9 +23,9 @@ def embed_similarity(key_embeds: Tensor,
     Returns:
         Tensor: Similarity matrix of shape (N1, N2).
     """
-    assert method in ['dot_product', 'cosine']
+    assert method in ["dot_product", "cosine"]
 
-    if method == 'cosine':
+    if method == "cosine":
         key_embeds = F.normalize(key_embeds, p=2, dim=1)
         ref_embeds = F.normalize(ref_embeds, p=2, dim=1)
 

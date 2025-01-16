@@ -7,7 +7,7 @@
 from mmengine.config import read_base
 
 with read_base():
-    from .._base_.default_runtime import *
+    from .._base_.default_runtime import default_hooks
 
 from mmengine.dataset.sampler import DefaultSampler
 from mmengine.optim import OptimWrapper
@@ -17,17 +17,22 @@ from torch.optim import SGD
 
 from mmdet.datasets import CocoDataset, RepeatDataset
 from mmdet.datasets.transforms.formatting import PackDetInputs
-from mmdet.datasets.transforms.loading import (FilterAnnotations,
-                                               LoadAnnotations,
-                                               LoadImageFromFile)
-from mmdet.datasets.transforms.transforms import (CachedMixUp, CachedMosaic,
-                                                  Pad, RandomCrop, RandomFlip,
-                                                  RandomResize, Resize)
+from mmdet.datasets.transforms.loading import (
+    FilterAnnotations,
+    LoadAnnotations,
+    LoadImageFromFile,
+)
+from mmdet.datasets.transforms.transforms import (
+    RandomCrop,
+    RandomFlip,
+    RandomResize,
+    Resize,
+)
 from mmdet.evaluation import CocoMetric
 
 # dataset settings
 dataset_type = CocoDataset
-data_root = 'data/coco/'
+data_root = "data/coco/"
 image_size = (1024, 1024)
 
 backend_args = None
@@ -35,20 +40,17 @@ backend_args = None
 train_pipeline = [
     dict(type=LoadImageFromFile, backend_args=backend_args),
     dict(type=LoadAnnotations, with_bbox=True, with_mask=True),
-    dict(
-        type=RandomResize,
-        scale=image_size,
-        ratio_range=(0.1, 2.0),
-        keep_ratio=True),
+    dict(type=RandomResize, scale=image_size, ratio_range=(0.1, 2.0), keep_ratio=True),
     dict(
         type=RandomCrop,
-        crop_type='absolute_range',
+        crop_type="absolute_range",
         crop_size=image_size,
         recompute_bbox=True,
-        allow_negative_crop=True),
+        allow_negative_crop=True,
+    ),
     dict(type=FilterAnnotations, min_gt_bbox_wh=(1e-2, 1e-2)),
     dict(type=RandomFlip, prob=0.5),
-    dict(type=PackDetInputs)
+    dict(type=PackDetInputs),
 ]
 test_pipeline = [
     dict(type=LoadImageFromFile, backend_args=backend_args),
@@ -56,8 +58,8 @@ test_pipeline = [
     dict(type=LoadAnnotations, with_bbox=True),
     dict(
         type=PackDetInputs,
-        meta_keys=('img_id', 'img_path', 'ori_shape', 'img_shape',
-                   'scale_factor'))
+        meta_keys=("img_id", "img_path", "ori_shape", "img_shape", "scale_factor"),
+    ),
 ]
 
 # Use RepeatDataset to speed up training
@@ -72,11 +74,14 @@ train_dataloader = dict(
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file='annotations/instances_train2017.json',
-            data_prefix=dict(img='train2017/'),
+            ann_file="annotations/instances_train2017.json",
+            data_prefix=dict(img="train2017/"),
             filter_cfg=dict(filter_empty_gt=True, min_size=32),
             pipeline=train_pipeline,
-            backend_args=backend_args)))
+            backend_args=backend_args,
+        ),
+    ),
+)
 val_dataloader = dict(
     batch_size=1,
     num_workers=2,
@@ -86,32 +91,35 @@ val_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file='annotations/instances_val2017.json',
-        data_prefix=dict(img='val2017/'),
+        ann_file="annotations/instances_val2017.json",
+        data_prefix=dict(img="val2017/"),
         test_mode=True,
         pipeline=test_pipeline,
-        backend_args=backend_args))
+        backend_args=backend_args,
+    ),
+)
 test_dataloader = val_dataloader
 
 val_evaluator = dict(
     type=CocoMetric,
-    ann_file=data_root + 'annotations/instances_val2017.json',
-    metric=['bbox', 'segm'],
+    ann_file=data_root + "annotations/instances_val2017.json",
+    metric=["bbox", "segm"],
     format_only=False,
-    backend_args=backend_args)
+    backend_args=backend_args,
+)
 test_evaluator = val_evaluator
 
 max_epochs = 25
 
-train_cfg = dict(
-    type=EpochBasedTrainLoop, max_epochs=max_epochs, val_interval=5)
+train_cfg = dict(type=EpochBasedTrainLoop, max_epochs=max_epochs, val_interval=5)
 val_cfg = dict(type=ValLoop)
 test_cfg = dict(type=TestLoop)
 
 # optimizer assumes bs=64
 optim_wrapper = dict(
     type=OptimWrapper,
-    optimizer=dict(type=SGD, lr=0.1, momentum=0.9, weight_decay=0.00004))
+    optimizer=dict(type=SGD, lr=0.1, momentum=0.9, weight_decay=0.00004),
+)
 
 # learning rate
 param_scheduler = [
@@ -122,7 +130,8 @@ param_scheduler = [
         end=max_epochs,
         by_epoch=True,
         milestones=[22, 24],
-        gamma=0.1)
+        gamma=0.1,
+    ),
 ]
 
 # only keep latest 2 checkpoints

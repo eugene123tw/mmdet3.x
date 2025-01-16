@@ -6,7 +6,6 @@ from mmdet.models.losses import GaussianFocalLoss
 
 
 class TestGaussianFocalLoss(unittest.TestCase):
-
     def test_forward(self):
         pred = torch.rand((10, 4))
         target = torch.rand((10, 4))
@@ -18,17 +17,17 @@ class TestGaussianFocalLoss(unittest.TestCase):
         self.assertIsInstance(loss2, torch.Tensor)
 
         # test reduction
-        gaussian_focal_loss = GaussianFocalLoss(reduction='none')
+        gaussian_focal_loss = GaussianFocalLoss(reduction="none")
         loss = gaussian_focal_loss(pred, target)
         self.assertTrue(loss.shape == (10, 4))
 
         # test reduction_override
-        loss = gaussian_focal_loss(pred, target, reduction_override='mean')
+        loss = gaussian_focal_loss(pred, target, reduction_override="mean")
         self.assertTrue(loss.ndim == 0)
 
         # Only supports None, 'none', 'mean', 'sum'
         with self.assertRaises(AssertionError):
-            gaussian_focal_loss(pred, target, reduction_override='max')
+            gaussian_focal_loss(pred, target, reduction_override="max")
 
         # test pos_inds
         pos_inds = (torch.rand(5) * 8).long()

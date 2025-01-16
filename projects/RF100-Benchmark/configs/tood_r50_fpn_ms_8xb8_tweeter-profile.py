@@ -1,39 +1,37 @@
-_base_ = '../../../configs/tood/tood_r50_fpn_1x_coco.py'
+_base_ = "../../../configs/tood/tood_r50_fpn_1x_coco.py"
 
-custom_imports = dict(
-    imports=['projects.RF100-Benchmark'], allow_failed_imports=False)
+custom_imports = dict(imports=["projects.RF100-Benchmark"], allow_failed_imports=False)
 
-data_root = 'rf100/tweeter-profile/'
-class_name = ('profile_info', )
+data_root = "rf100/tweeter-profile/"
+class_name = ("profile_info",)
 num_classes = len(class_name)
 metainfo = dict(classes=class_name)
 image_scale = (640, 640)
 
 model = dict(
     backbone=dict(norm_eval=False, frozen_stages=-1),
-    bbox_head=dict(num_classes=int(num_classes)))
+    bbox_head=dict(num_classes=int(num_classes)),
+)
 
 train_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations', with_bbox=True),
+    dict(type="LoadImageFromFile"),
+    dict(type="LoadAnnotations", with_bbox=True),
     dict(
-        type='RandomResize',
-        scale=image_scale,
-        ratio_range=(0.8, 1.2),
-        keep_ratio=True),
-    dict(type='RandomCrop', crop_size=image_scale),
-    dict(type='RandomFlip', prob=0.5),
-    dict(type='PackDetInputs')
+        type="RandomResize", scale=image_scale, ratio_range=(0.8, 1.2), keep_ratio=True
+    ),
+    dict(type="RandomCrop", crop_size=image_scale),
+    dict(type="RandomFlip", prob=0.5),
+    dict(type="PackDetInputs"),
 ]
 
 test_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='Resize', scale=image_scale, keep_ratio=True),
-    dict(type='LoadAnnotations', with_bbox=True),
+    dict(type="LoadImageFromFile"),
+    dict(type="Resize", scale=image_scale, keep_ratio=True),
+    dict(type="LoadAnnotations", with_bbox=True),
     dict(
-        type='PackDetInputs',
-        meta_keys=('img_id', 'img_path', 'ori_shape', 'img_shape',
-                   'scale_factor'))
+        type="PackDetInputs",
+        meta_keys=("img_id", "img_path", "ori_shape", "img_shape", "scale_factor"),
+    ),
 ]
 
 train_dataloader = dict(
@@ -42,55 +40,59 @@ train_dataloader = dict(
     batch_sampler=None,
     dataset=dict(
         _delete_=True,
-        type='RepeatDataset',
+        type="RepeatDataset",
         times=4,
         dataset=dict(
-            type='RF100CocoDataset',
+            type="RF100CocoDataset",
             metainfo=metainfo,
             data_root=data_root,
-            ann_file='train/_annotations.coco.json',
-            data_prefix=dict(img='train/'),
+            ann_file="train/_annotations.coco.json",
+            data_prefix=dict(img="train/"),
             filter_cfg=dict(filter_empty_gt=False, min_size=32),
-            pipeline=train_pipeline)))
+            pipeline=train_pipeline,
+        ),
+    ),
+)
 
 val_dataloader = dict(
     dataset=dict(
-        type='RF100CocoDataset',
+        type="RF100CocoDataset",
         metainfo=metainfo,
         data_root=data_root,
-        ann_file='valid/_annotations.coco.json',
-        data_prefix=dict(img='valid/'),
+        ann_file="valid/_annotations.coco.json",
+        data_prefix=dict(img="valid/"),
         pipeline=test_pipeline,
-    ))
+    )
+)
 test_dataloader = val_dataloader
 
 val_evaluator = dict(
-    type='RF100CocoMetric',
-    ann_file=data_root + 'valid/_annotations.coco.json',
-    metric='bbox',
-    format_only=False)
+    type="RF100CocoMetric",
+    ann_file=data_root + "valid/_annotations.coco.json",
+    metric="bbox",
+    format_only=False,
+)
 test_evaluator = val_evaluator
 
 max_epochs = 25
 train_cfg = dict(max_epochs=max_epochs)
 
 param_scheduler = [
+    dict(type="LinearLR", start_factor=0.001, by_epoch=False, begin=0, end=200),
     dict(
-        type='LinearLR', start_factor=0.001, by_epoch=False, begin=0, end=200),
-    dict(
-        type='MultiStepLR',
+        type="MultiStepLR",
         begin=0,
         end=max_epochs,
         by_epoch=True,
         milestones=[18, 22],
-        gamma=0.1)
+        gamma=0.1,
+    ),
 ]
 
-load_from = 'https://download.openmmlab.com/mmdetection/v2.0/tood/tood_r50_fpn_1x_coco/tood_r50_fpn_1x_coco_20211210_103425-20e20746.pth'  # noqa
+load_from = "https://download.openmmlab.com/mmdetection/v2.0/tood/tood_r50_fpn_1x_coco/tood_r50_fpn_1x_coco_20211210_103425-20e20746.pth"  # noqa
 
 # We only save the best checkpoint by validation mAP.
-default_hooks = dict(
-    checkpoint=dict(save_best='auto', max_keep_ckpts=-1, interval=-1))
+default_hooks = dict(checkpoint=dict(save_best="auto", max_keep_ckpts=-1, interval=-1))
 
 # Default setting for scaling LR automatically
 #   - `enable` means enable scaling LR automatically

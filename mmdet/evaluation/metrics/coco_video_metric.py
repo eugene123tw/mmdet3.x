@@ -30,7 +30,7 @@ class CocoVideoMetric(CocoMetric):
                 contain annotations and predictions.
         """
         for track_data_sample in data_samples:
-            video_data_samples = track_data_sample['video_data_samples']
+            video_data_samples = track_data_sample["video_data_samples"]
             ori_video_len = video_data_samples[0].ori_video_length
             video_len = len(video_data_samples)
             if ori_video_len == video_len:
@@ -55,9 +55,10 @@ class CocoVideoMetric(CocoMetric):
         """
         if len(self.results) == 0:
             warnings.warn(
-                f'{self.__class__.__name__} got empty `self.results`. Please '
-                'ensure that the processed results are properly added into '
-                '`self.results` in `process` method.')
+                f"{self.__class__.__name__} got empty `self.results`. Please "
+                "ensure that the processed results are properly added into "
+                "`self.results` in `process` method."
+            )
 
         results = collect_tracking_results(self.results, self.collect_device)
 
@@ -65,10 +66,7 @@ class CocoVideoMetric(CocoMetric):
             _metrics = self.compute_metrics(results)  # type: ignore
             # Add prefix to metric names
             if self.prefix:
-                _metrics = {
-                    '/'.join((self.prefix, k)): v
-                    for k, v in _metrics.items()
-                }
+                _metrics = {"/".join((self.prefix, k)): v for k, v in _metrics.items()}
             metrics = [_metrics]
         else:
             metrics = [None]  # type: ignore

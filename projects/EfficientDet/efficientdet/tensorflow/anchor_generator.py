@@ -4,8 +4,7 @@ from typing import Optional, Tuple, Union
 import torch
 from torch import Tensor
 
-from mmdet.models.task_modules.prior_generators.anchor_generator import \
-    AnchorGenerator
+from mmdet.models.task_modules.prior_generators.anchor_generator import AnchorGenerator
 from mmdet.registry import TASK_UTILS
 from mmdet.structures.bbox import HorizontalBoxes
 
@@ -14,13 +13,13 @@ DeviceType = Union[str, torch.device]
 
 @TASK_UTILS.register_module()
 class YXYXAnchorGenerator(AnchorGenerator):
-
-    def gen_single_level_base_anchors(self,
-                                      base_size: Union[int, float],
-                                      scales: Tensor,
-                                      ratios: Tensor,
-                                      center: Optional[Tuple[float]] = None) \
-            -> Tensor:
+    def gen_single_level_base_anchors(
+        self,
+        base_size: Union[int, float],
+        scales: Tensor,
+        ratios: Tensor,
+        center: Optional[Tuple[float]] = None,
+    ) -> Tensor:
         """Generate base anchors of a single level.
 
         Args:
@@ -64,11 +63,13 @@ class YXYXAnchorGenerator(AnchorGenerator):
 
         return base_anchors
 
-    def single_level_grid_priors(self,
-                                 featmap_size: Tuple[int, int],
-                                 level_idx: int,
-                                 dtype: torch.dtype = torch.float32,
-                                 device: DeviceType = 'cuda') -> Tensor:
+    def single_level_grid_priors(
+        self,
+        featmap_size: Tuple[int, int],
+        level_idx: int,
+        dtype: torch.dtype = torch.float32,
+        device: DeviceType = "cuda",
+    ) -> Tensor:
         """Generate grid anchors of a single level.
 
         Note:

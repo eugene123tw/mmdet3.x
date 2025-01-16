@@ -26,13 +26,16 @@ class Mask2FormerVideo(BaseMOTModel):
             Defaults to None.
     """
 
-    def __init__(self,
-                 backbone: Optional[dict] = None,
-                 track_head: Optional[dict] = None,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None):
+    def __init__(
+        self,
+        backbone: Optional[dict] = None,
+        track_head: Optional[dict] = None,
+        data_preprocessor: OptConfigType = None,
+        init_cfg: OptMultiConfig = None,
+    ):
         super(BaseMOTModel, self).__init__(
-            data_preprocessor=data_preprocessor, init_cfg=init_cfg)
+            data_preprocessor=data_preprocessor, init_cfg=init_cfg
+        )
 
         if backbone is not None:
             self.backbone = MODELS.build(backbone)
@@ -42,20 +45,34 @@ class Mask2FormerVideo(BaseMOTModel):
 
         self.num_classes = self.track_head.num_classes
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
         """Overload in order to load mmdet pretrained ckpt."""
         for key in list(state_dict):
-            if key.startswith('panoptic_head'):
-                state_dict[key.replace('panoptic',
-                                       'track')] = state_dict.pop(key)
+            if key.startswith("panoptic_head"):
+                state_dict[key.replace("panoptic", "track")] = state_dict.pop(key)
 
-        super()._load_from_state_dict(state_dict, prefix, local_metadata,
-                                      strict, missing_keys, unexpected_keys,
-                                      error_msgs)
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
 
-    def loss(self, inputs: Tensor, data_samples: TrackSampleList,
-             **kwargs) -> Union[dict, tuple]:
+    def loss(
+        self, inputs: Tensor, data_samples: TrackSampleList, **kwargs
+    ) -> Union[dict, tuple]:
         """
         Args:
             inputs (Tensor): Input images of shape (N, T, C, H, W).
@@ -67,7 +84,7 @@ class Mask2FormerVideo(BaseMOTModel):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
-        assert inputs.dim() == 5, 'The img must be 5D Tensor (N, T, C, H, W).'
+        assert inputs.dim() == 5, "The img must be 5D Tensor (N, T, C, H, W)."
         # shape (N * T, C, H, W)
         img = inputs.flatten(0, 1)
 
@@ -76,10 +93,9 @@ class Mask2FormerVideo(BaseMOTModel):
 
         return losses
 
-    def predict(self,
-                inputs: Tensor,
-                data_samples: TrackSampleList,
-                rescale: bool = True) -> TrackSampleList:
+    def predict(
+        self, inputs: Tensor, data_samples: TrackSampleList, rescale: bool = True
+    ) -> TrackSampleList:
         """Predict results from a batch of inputs and data samples with
         postprocessing.
 
@@ -97,17 +113,17 @@ class Mask2FormerVideo(BaseMOTModel):
         Returns:
             TrackSampleList: Tracking results of the inputs.
         """
-        assert inputs.dim() == 5, 'The img must be 5D Tensor (N, T, C, H, W).'
+        assert inputs.dim() == 5, "The img must be 5D Tensor (N, T, C, H, W)."
 
-        assert len(data_samples) == 1, \
-            'Mask2former only support 1 batch size per gpu for now.'
+        assert (
+            len(data_samples) == 1
+        ), "Mask2former only support 1 batch size per gpu for now."
 
         # [T, C, H, W]
         img = inputs[0]
         track_data_sample = data_samples[0]
         feats = self.backbone(img)
-        pred_track_ins_list = self.track_head.predict(feats, track_data_sample,
-                                                      rescale)
+        pred_track_ins_list = self.track_head.predict(feats, track_data_sample, rescale)
 
         det_data_samples_list = []
         for idx, pred_track_ins in enumerate(pred_track_ins_list):

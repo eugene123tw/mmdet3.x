@@ -37,23 +37,23 @@ def test_dropblock():
 
 
 class TestPixelDecoder(unittest.TestCase):
-
     def test_forward(self):
         base_channels = 64
         pixel_decoder_cfg = ConfigDict(
             dict(
-                type='PixelDecoder',
+                type="PixelDecoder",
                 in_channels=[base_channels * 2**i for i in range(4)],
                 feat_channels=base_channels,
                 out_channels=base_channels,
-                norm_cfg=dict(type='GN', num_groups=32),
-                act_cfg=dict(type='ReLU')))
+                norm_cfg=dict(type="GN", num_groups=32),
+                act_cfg=dict(type="ReLU"),
+            )
+        )
         self = MODELS.build(pixel_decoder_cfg)
         self.init_weights()
         img_metas = [{}, {}]
         feats = [
-            torch.rand(
-                (2, base_channels * 2**i, 4 * 2**(3 - i), 5 * 2**(3 - i)))
+            torch.rand((2, base_channels * 2**i, 4 * 2 ** (3 - i), 5 * 2 ** (3 - i)))
             for i in range(4)
         ]
         mask_feature, memory = self(feats, img_metas)
@@ -63,17 +63,16 @@ class TestPixelDecoder(unittest.TestCase):
 
 
 class TestTransformerEncoderPixelDecoder(unittest.TestCase):
-
     def test_forward(self):
         base_channels = 64
         pixel_decoder_cfg = ConfigDict(
             dict(
-                type='TransformerEncoderPixelDecoder',
+                type="TransformerEncoderPixelDecoder",
                 in_channels=[base_channels * 2**i for i in range(4)],
                 feat_channels=base_channels,
                 out_channels=base_channels,
-                norm_cfg=dict(type='GN', num_groups=32),
-                act_cfg=dict(type='ReLU'),
+                norm_cfg=dict(type="GN", num_groups=32),
+                act_cfg=dict(type="ReLU"),
                 encoder=dict(  # DetrTransformerEncoder
                     num_layers=6,
                     layer_cfg=dict(  # DetrTransformerEncoderLayer
@@ -83,32 +82,39 @@ class TestTransformerEncoderPixelDecoder(unittest.TestCase):
                             attn_drop=0.1,
                             proj_drop=0.1,
                             dropout_layer=None,
-                            batch_first=True),
+                            batch_first=True,
+                        ),
                         ffn_cfg=dict(
                             embed_dims=base_channels,
                             feedforward_channels=base_channels * 8,
                             num_fcs=2,
-                            act_cfg=dict(type='ReLU', inplace=True),
+                            act_cfg=dict(type="ReLU", inplace=True),
                             ffn_drop=0.1,
                             dropout_layer=None,
-                            add_identity=True),
-                        norm_cfg=dict(type='LN'),
-                        init_cfg=None),
-                    init_cfg=None),
-                positional_encoding=dict(
-                    num_feats=base_channels // 2, normalize=True)))
+                            add_identity=True,
+                        ),
+                        norm_cfg=dict(type="LN"),
+                        init_cfg=None,
+                    ),
+                    init_cfg=None,
+                ),
+                positional_encoding=dict(num_feats=base_channels // 2, normalize=True),
+            )
+        )
         self = MODELS.build(pixel_decoder_cfg)
         self.init_weights()
-        img_metas = [{
-            'batch_input_shape': (128, 160),
-            'img_shape': (120, 160),
-        }, {
-            'batch_input_shape': (128, 160),
-            'img_shape': (125, 160),
-        }]
+        img_metas = [
+            {
+                "batch_input_shape": (128, 160),
+                "img_shape": (120, 160),
+            },
+            {
+                "batch_input_shape": (128, 160),
+                "img_shape": (125, 160),
+            },
+        ]
         feats = [
-            torch.rand(
-                (2, base_channels * 2**i, 4 * 2**(3 - i), 5 * 2**(3 - i)))
+            torch.rand((2, base_channels * 2**i, 4 * 2 ** (3 - i), 5 * 2 ** (3 - i)))
             for i in range(4)
         ]
         mask_feature, memory = self(feats, img_metas)
@@ -118,19 +124,18 @@ class TestTransformerEncoderPixelDecoder(unittest.TestCase):
 
 
 class TestMSDeformAttnPixelDecoder(unittest.TestCase):
-
     def test_forward(self):
         base_channels = 64
         pixel_decoder_cfg = ConfigDict(
             dict(
-                type='MSDeformAttnPixelDecoder',
+                type="MSDeformAttnPixelDecoder",
                 in_channels=[base_channels * 2**i for i in range(4)],
                 strides=[4, 8, 16, 32],
                 feat_channels=base_channels,
                 out_channels=base_channels,
                 num_outs=3,
-                norm_cfg=dict(type='GN', num_groups=32),
-                act_cfg=dict(type='ReLU'),
+                norm_cfg=dict(type="GN", num_groups=32),
+                act_cfg=dict(type="ReLU"),
                 encoder=dict(  # DeformableDetrTransformerEncoder
                     num_layers=6,
                     layer_cfg=dict(  # DeformableDetrTransformerEncoderLayer
@@ -143,22 +148,26 @@ class TestMSDeformAttnPixelDecoder(unittest.TestCase):
                             dropout=0.0,
                             batch_first=True,
                             norm_cfg=None,
-                            init_cfg=None),
+                            init_cfg=None,
+                        ),
                         ffn_cfg=dict(
                             embed_dims=base_channels,
                             feedforward_channels=base_channels * 4,
                             num_fcs=2,
                             ffn_drop=0.0,
-                            act_cfg=dict(type='ReLU', inplace=True))),
-                    init_cfg=None),
-                positional_encoding=dict(
-                    num_feats=base_channels // 2, normalize=True),
-                init_cfg=None))
+                            act_cfg=dict(type="ReLU", inplace=True),
+                        ),
+                    ),
+                    init_cfg=None,
+                ),
+                positional_encoding=dict(num_feats=base_channels // 2, normalize=True),
+                init_cfg=None,
+            )
+        )
         self = MODELS.build(pixel_decoder_cfg)
         self.init_weights()
         feats = [
-            torch.rand(
-                (2, base_channels * 2**i, 4 * 2**(3 - i), 5 * 2**(3 - i)))
+            torch.rand((2, base_channels * 2**i, 4 * 2 ** (3 - i), 5 * 2 ** (3 - i)))
             for i in range(4)
         ]
         mask_feature, multi_scale_features = self(feats)
@@ -167,5 +176,4 @@ class TestMSDeformAttnPixelDecoder(unittest.TestCase):
         assert len(multi_scale_features) == 3
         multi_scale_features = multi_scale_features[::-1]
         for i in range(3):
-            assert multi_scale_features[i].shape[-2:] == feats[i +
-                                                               1].shape[-2:]
+            assert multi_scale_features[i].shape[-2:] == feats[i + 1].shape[-2:]

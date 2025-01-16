@@ -5,7 +5,7 @@ from mmengine.utils import digit_version
 
 from mmdet.registry import MODELS
 
-if digit_version(torch.__version__) >= digit_version('1.7.0'):
+if digit_version(torch.__version__) >= digit_version("1.7.0"):
     from torch.nn import SiLU
 else:
 
@@ -19,4 +19,4 @@ else:
             return inputs * torch.sigmoid(inputs)
 
 
-MODELS.register_module(module=SiLU, name='SiLU')
+MODELS.register_module(module=SiLU, name="SiLU")

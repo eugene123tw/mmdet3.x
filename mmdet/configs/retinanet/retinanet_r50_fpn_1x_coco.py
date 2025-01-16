@@ -17,4 +17,5 @@ from torch.optim.sgd import SGD
 
 # optimizer
 optim_wrapper.update(
-    dict(optimizer=dict(type=SGD, lr=0.01, momentum=0.9, weight_decay=0.0001)))
+    dict(optimizer=dict(type=SGD, lr=0.01, momentum=0.9, weight_decay=0.0001))
+)

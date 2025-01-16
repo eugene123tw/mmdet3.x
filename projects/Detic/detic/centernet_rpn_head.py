@@ -31,8 +31,7 @@ class CenterNetRPNHead(CenterNetUpdateHead):
 
     def _init_predictor(self) -> None:
         """Initialize predictor layers of the head."""
-        self.conv_cls = nn.Conv2d(
-            self.feat_channels, self.num_classes, 3, padding=1)
+        self.conv_cls = nn.Conv2d(self.feat_channels, self.num_classes, 3, padding=1)
         self.conv_reg = nn.Conv2d(self.feat_channels, 4, 3, padding=1)
 
     def forward(self, x: Tuple[Tensor]) -> Tuple[List[Tensor], List[Tensor]]:
@@ -53,8 +52,9 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         res = multi_apply(self.forward_single, x, self.scales, self.strides)
         return res
 
-    def forward_single(self, x: Tensor, scale: Scale,
-                       stride: int) -> Tuple[Tensor, Tensor]:
+    def forward_single(
+        self, x: Tensor, scale: Scale, stride: int
+    ) -> Tuple[Tensor, Tensor]:
         """Forward features of a single scale level.
 
         Args:
@@ -82,15 +82,17 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             bbox_pred *= stride
         return cls_score, bbox_pred  # score aligned, box larger
 
-    def _predict_by_feat_single(self,
-                                cls_score_list: List[Tensor],
-                                bbox_pred_list: List[Tensor],
-                                score_factor_list: List[Tensor],
-                                mlvl_priors: List[Tensor],
-                                img_meta: dict,
-                                cfg: ConfigDict,
-                                rescale: bool = False,
-                                with_nms: bool = True) -> InstanceData:
+    def _predict_by_feat_single(
+        self,
+        cls_score_list: List[Tensor],
+        bbox_pred_list: List[Tensor],
+        score_factor_list: List[Tensor],
+        mlvl_priors: List[Tensor],
+        img_meta: dict,
+        cfg: ConfigDict,
+        rescale: bool = False,
+        with_nms: bool = True,
+    ) -> InstanceData:
         """Transform a single image's features extracted from the head into
         bbox results.
 
@@ -133,25 +135,23 @@ class CenterNetRPNHead(CenterNetUpdateHead):
 
         cfg = self.test_cfg if cfg is None else cfg
         cfg = copy.deepcopy(cfg)
-        nms_pre = cfg.get('nms_pre', -1)
+        nms_pre = cfg.get("nms_pre", -1)
 
         mlvl_bbox_preds = []
         mlvl_valid_priors = []
         mlvl_scores = []
         mlvl_labels = []
 
-        for level_idx, (cls_score, bbox_pred, score_factor, priors) in \
-                enumerate(zip(cls_score_list, bbox_pred_list,
-                              score_factor_list, mlvl_priors)):
-
+        for level_idx, (cls_score, bbox_pred, score_factor, priors) in enumerate(
+            zip(cls_score_list, bbox_pred_list, score_factor_list, mlvl_priors)
+        ):
             assert cls_score.size()[-2:] == bbox_pred.size()[-2:]
 
             dim = self.bbox_coder.encode_size
             bbox_pred = bbox_pred.permute(1, 2, 0).reshape(-1, dim)
-            cls_score = cls_score.permute(1, 2,
-                                          0).reshape(-1, self.cls_out_channels)
+            cls_score = cls_score.permute(1, 2, 0).reshape(-1, self.cls_out_channels)
             heatmap = cls_score.sigmoid()
-            score_thr = cfg.get('score_thr', 0)
+            score_thr = cfg.get("score_thr", 0)
 
             candidate_inds = heatmap > score_thr  # 0.05
             pre_nms_top_n = candidate_inds.sum()  # N
@@ -167,8 +167,7 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             per_grids = priors[box_loc]  # n x 2
 
             if candidate_inds.sum().item() > pre_nms_top_n.item():
-                heatmap, top_k_indices = \
-                    heatmap.topk(pre_nms_top_n, sorted=False)
+                heatmap, top_k_indices = heatmap.topk(pre_nms_top_n, sorted=False)
                 labels = labels[top_k_indices]
                 bbox_pred = bbox_pred[top_k_indices]
                 per_grids = per_grids[top_k_indices]
@@ -193,4 +192,5 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             cfg=cfg,
             rescale=rescale,
             with_nms=with_nms,
-            img_meta=img_meta)
+            img_meta=img_meta,
+        )

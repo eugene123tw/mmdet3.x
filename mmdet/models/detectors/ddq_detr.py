@@ -33,13 +33,15 @@ class DDQDETR(DINO):
             `iou_threshold` = 0.8.
     """
 
-    def __init__(self,
-                 *args,
-                 dense_topk_ratio: float = 1.5,
-                 dqs_cfg: OptConfigType = dict(type='nms', iou_threshold=0.8),
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        dense_topk_ratio: float = 1.5,
+        dqs_cfg: OptConfigType = dict(type="nms", iou_threshold=0.8),
+        **kwargs,
+    ):
         self.dense_topk_ratio = dense_topk_ratio
-        self.decoder_cfg = kwargs['decoder']
+        self.decoder_cfg = kwargs["decoder"]
         self.dqs_cfg = dqs_cfg
         super().__init__(*args, **kwargs)
 
@@ -50,17 +52,16 @@ class DDQDETR(DINO):
             m.cache_dict = cache_dict
         # first element is the start index of matching queries
         # second element is the number of matching queries
-        self.cache_dict['dis_query_info'] = [0, 0]
+        self.cache_dict["dis_query_info"] = [0, 0]
 
         # mask for distinct queries in each decoder layer
-        self.cache_dict['distinct_query_mask'] = []
+        self.cache_dict["distinct_query_mask"] = []
         # pass to decoder do the dqs
-        self.cache_dict['cls_branches'] = self.bbox_head.cls_branches
+        self.cache_dict["cls_branches"] = self.bbox_head.cls_branches
         # Used to construct the attention mask after dqs
-        self.cache_dict['num_heads'] = self.encoder.layers[
-            0].self_attn.num_heads
+        self.cache_dict["num_heads"] = self.encoder.layers[0].self_attn.num_heads
         # pass to decoder to do the dqs
-        self.cache_dict['dqs_cfg'] = self.dqs_cfg
+        self.cache_dict["dqs_cfg"] = self.dqs_cfg
 
     def _init_layers(self) -> None:
         """Initialize layers except for backbone, neck and bbox_head."""
@@ -121,21 +122,24 @@ class DDQDETR(DINO):
         """
         bs, _, c = memory.shape
         output_memory, output_proposals = self.gen_encoder_output_proposals(
-            memory, memory_mask, spatial_shapes)
-        enc_outputs_class = self.bbox_head.cls_branches[
-            self.decoder.num_layers](
-                output_memory)
-        enc_outputs_coord_unact = self.bbox_head.reg_branches[
-            self.decoder.num_layers](output_memory) + output_proposals
+            memory, memory_mask, spatial_shapes
+        )
+        enc_outputs_class = self.bbox_head.cls_branches[self.decoder.num_layers](
+            output_memory
+        )
+        enc_outputs_coord_unact = (
+            self.bbox_head.reg_branches[self.decoder.num_layers](output_memory)
+            + output_proposals
+        )
 
         if self.training:
             # aux dense branch particularly in DDQ DETR, which doesn't exist
             #   in DINO.
             # -1 is the aux head for the encoder
-            dense_enc_outputs_class = self.bbox_head.cls_branches[-1](
-                output_memory)
-            dense_enc_outputs_coord_unact = self.bbox_head.reg_branches[-1](
-                output_memory) + output_proposals
+            dense_enc_outputs_class = self.bbox_head.cls_branches[-1](output_memory)
+            dense_enc_outputs_coord_unact = (
+                self.bbox_head.reg_branches[-1](output_memory) + output_proposals
+            )
 
         topk = self.num_queries
         dense_topk = int(topk * self.dense_topk_ratio)
@@ -169,9 +173,11 @@ class DDQDETR(DINO):
             #   particularly by DDQ DETR for region proposal generation,
             #   instead of `topk` of class scores by DINO.
             _, keep_idxs = batched_nms(
-                single_proposals, single_scores,
+                single_proposals,
+                single_scores,
                 torch.ones(len(single_scores), device=single_scores.device),
-                self.cache_dict['dqs_cfg'])
+                self.cache_dict["dqs_cfg"],
+            )
 
             if self.training:
                 # aux dense branch particularly in DDQ DETR, which doesn't
@@ -182,16 +188,20 @@ class DDQDETR(DINO):
                 # Only sort by classification score, neither nms nor topk is
                 #   required. So input parameter `nms_cfg` = None.
                 _, dense_keep_idxs = batched_nms(
-                    dense_single_proposals, dense_single_scores,
+                    dense_single_proposals,
+                    dense_single_scores,
                     torch.ones(
-                        len(dense_single_scores),
-                        device=dense_single_scores.device), None)
+                        len(dense_single_scores), device=dense_single_scores.device
+                    ),
+                    None,
+                )
 
-                dense_topk_score.append(dense_enc_outputs_class[img_id]
-                                        [dense_keep_idxs][:dense_topk])
+                dense_topk_score.append(
+                    dense_enc_outputs_class[img_id][dense_keep_idxs][:dense_topk]
+                )
                 dense_topk_coords_unact.append(
-                    dense_enc_outputs_coord_unact[img_id][dense_keep_idxs]
-                    [:dense_topk])
+                    dense_enc_outputs_coord_unact[img_id][dense_keep_idxs][:dense_topk]
+                )
 
             topk_score.append(enc_outputs_class[img_id][keep_idxs][:topk])
 
@@ -199,8 +209,7 @@ class DDQDETR(DINO):
             #   coordinates in Deformable DETR, we fuse the feature map
             #   embedding of distinct positions as the content part, which
             #   makes the initial queries more distinct.
-            topk_coords_unact.append(
-                enc_outputs_coord_unact[img_id][keep_idxs][:topk])
+            topk_coords_unact.append(enc_outputs_coord_unact[img_id][keep_idxs][:topk])
 
             map_memory = self.query_map(memory[img_id].detach())
             query.append(map_memory[keep_idxs][:topk])
@@ -221,7 +230,8 @@ class DDQDETR(DINO):
         if self.training:
             query = torch.cat([query, dense_query], dim=1)
             topk_coords_unact = torch.cat(
-                [topk_coords_unact, dense_topk_coords_unact], dim=1)
+                [topk_coords_unact, dense_topk_coords_unact], dim=1
+            )
 
         topk_coords = topk_coords_unact.sigmoid()
         if self.training:
@@ -231,29 +241,28 @@ class DDQDETR(DINO):
         topk_coords_unact = topk_coords_unact.detach()
 
         if self.training:
-            dn_label_query, dn_bbox_query, dn_mask, dn_meta = \
-                self.dn_query_generator(batch_data_samples)
+            dn_label_query, dn_bbox_query, dn_mask, dn_meta = self.dn_query_generator(
+                batch_data_samples
+            )
             query = torch.cat([dn_label_query, query], dim=1)
-            reference_points = torch.cat([dn_bbox_query, topk_coords_unact],
-                                         dim=1)
+            reference_points = torch.cat([dn_bbox_query, topk_coords_unact], dim=1)
 
             # Update `dn_mask` to add mask for dense queries.
             ori_size = dn_mask.size(-1)
             new_size = dn_mask.size(-1) + num_dense_queries
             new_dn_mask = dn_mask.new_ones((new_size, new_size)).bool()
-            dense_mask = torch.zeros(num_dense_queries,
-                                     num_dense_queries).bool()
-            self.cache_dict['dis_query_info'] = [dn_label_query.size(1), topk]
+            dense_mask = torch.zeros(num_dense_queries, num_dense_queries).bool()
+            self.cache_dict["dis_query_info"] = [dn_label_query.size(1), topk]
 
             new_dn_mask[ori_size:, ori_size:] = dense_mask
             new_dn_mask[:ori_size, :ori_size] = dn_mask
-            dn_meta['num_dense_queries'] = num_dense_queries
+            dn_meta["num_dense_queries"] = num_dense_queries
             dn_mask = new_dn_mask
-            self.cache_dict['num_dense_queries'] = num_dense_queries
+            self.cache_dict["num_dense_queries"] = num_dense_queries
             self.decoder.aux_reg_branches = self.bbox_head.aux_reg_branches
 
         else:
-            self.cache_dict['dis_query_info'] = [0, topk]
+            self.cache_dict["dis_query_info"] = [0, topk]
             reference_points = topk_coords_unact
             dn_mask, dn_meta = None, None
 
@@ -263,12 +272,18 @@ class DDQDETR(DINO):
             query=query,
             memory=memory,
             reference_points=reference_points,
-            dn_mask=dn_mask)
-        head_inputs_dict = dict(
-            enc_outputs_class=topk_score,
-            enc_outputs_coord=topk_coords,
-            aux_enc_outputs_class=dense_topk_score,
-            aux_enc_outputs_coord=dense_topk_coords,
-            dn_meta=dn_meta) if self.training else dict()
+            dn_mask=dn_mask,
+        )
+        head_inputs_dict = (
+            dict(
+                enc_outputs_class=topk_score,
+                enc_outputs_coord=topk_coords,
+                aux_enc_outputs_class=dense_topk_score,
+                aux_enc_outputs_coord=dense_topk_coords,
+                dn_meta=dn_meta,
+            )
+            if self.training
+            else dict()
+        )
 
         return decoder_inputs_dict, head_inputs_dict

@@ -13,15 +13,15 @@ class GTBoxSubOne_GLIP(BaseTransform):
     """Subtract 1 from the x2 and y2 coordinates of the gt_bboxes."""
 
     def transform(self, results: dict) -> dict:
-        if 'gt_bboxes' in results:
-            gt_bboxes = results['gt_bboxes']
+        if "gt_bboxes" in results:
+            gt_bboxes = results["gt_bboxes"]
             if isinstance(gt_bboxes, np.ndarray):
                 gt_bboxes[:, 2:] -= 1
-                results['gt_bboxes'] = gt_bboxes
+                results["gt_bboxes"] = gt_bboxes
             elif isinstance(gt_bboxes, HorizontalBoxes):
-                gt_bboxes = results['gt_bboxes'].tensor
+                gt_bboxes = results["gt_bboxes"].tensor
                 gt_bboxes[:, 2:] -= 1
-                results['gt_bboxes'] = HorizontalBoxes(gt_bboxes)
+                results["gt_bboxes"] = HorizontalBoxes(gt_bboxes)
             else:
                 raise NotImplementedError
         return results
@@ -39,28 +39,29 @@ class RandomFlip_GLIP(RandomFlip):
     def _flip(self, results: dict) -> None:
         """Flip images, bounding boxes, and semantic segmentation map."""
         # flip image
-        results['img'] = mmcv.imflip(
-            results['img'], direction=results['flip_direction'])
+        results["img"] = mmcv.imflip(
+            results["img"], direction=results["flip_direction"]
+        )
 
-        img_shape = results['img'].shape[:2]
+        img_shape = results["img"].shape[:2]
 
         # flip bboxes
-        if results.get('gt_bboxes', None) is not None:
-            results['gt_bboxes'].flip_(img_shape, results['flip_direction'])
+        if results.get("gt_bboxes", None) is not None:
+            results["gt_bboxes"].flip_(img_shape, results["flip_direction"])
             # Only change this line
-            if results['flip_direction'] == 'horizontal':
-                results['gt_bboxes'].translate_([-1, 0])
+            if results["flip_direction"] == "horizontal":
+                results["gt_bboxes"].translate_([-1, 0])
 
         # TODO: check it
         # flip masks
-        if results.get('gt_masks', None) is not None:
-            results['gt_masks'] = results['gt_masks'].flip(
-                results['flip_direction'])
+        if results.get("gt_masks", None) is not None:
+            results["gt_masks"] = results["gt_masks"].flip(results["flip_direction"])
 
         # flip segs
-        if results.get('gt_seg_map', None) is not None:
-            results['gt_seg_map'] = mmcv.imflip(
-                results['gt_seg_map'], direction=results['flip_direction'])
+        if results.get("gt_seg_map", None) is not None:
+            results["gt_seg_map"] = mmcv.imflip(
+                results["gt_seg_map"], direction=results["flip_direction"]
+            )
 
         # record homography matrix for flip
         self._record_homography_matrix(results)

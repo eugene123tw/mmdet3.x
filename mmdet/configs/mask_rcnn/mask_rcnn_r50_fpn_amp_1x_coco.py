@@ -7,7 +7,7 @@
 from mmengine.config import read_base
 
 with read_base():
-    from .mask_rcnn_r50_fpn_1x_coco import *
+    from .mask_rcnn_r50_fpn_1x_coco import optim_wrapper
 
 from mmengine.optim.optimizer.amp_optimizer_wrapper import AmpOptimWrapper
 

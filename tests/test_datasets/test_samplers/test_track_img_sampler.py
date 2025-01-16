@@ -9,16 +9,16 @@ from mmdet.datasets import MOTChallengeDataset, TrackImgSampler
 
 
 class TestTrackImgSampler(TestCase):
-
     def test_iter_base_video_dataset(self):
         # train mode
         dataset = MOTChallengeDataset(
-            data_prefix=dict(img_path='imgs'),
-            ann_file='tests/data/mot_sample.json',
-            metainfo=dict(classes=('pedestrian')),
+            data_prefix=dict(img_path="imgs"),
+            ann_file="tests/data/mot_sample.json",
+            metainfo=dict(classes=("pedestrian")),
             filter_cfg=dict(filter_empty_gt=True, min_size=32),
             test_mode=False,
-            pipeline=[])
+            pipeline=[],
+        )
         video_sampler = TrackImgSampler(dataset)
         assert len(video_sampler) == 5
         iterator = iter(video_sampler)
@@ -34,24 +34,26 @@ class TestTrackImgSampler(TestCase):
 
         # test mode
         dataset = MOTChallengeDataset(
-            data_prefix=dict(img_path='imgs'),
-            ann_file='tests/data/mot_sample.json',
-            metainfo=dict(classes=('pedestrian')),
+            data_prefix=dict(img_path="imgs"),
+            ann_file="tests/data/mot_sample.json",
+            metainfo=dict(classes=("pedestrian")),
             filter_cfg=dict(filter_empty_gt=True, min_size=32),
             test_mode=True,
-            pipeline=[])
+            pipeline=[],
+        )
         video_sampler = TrackImgSampler(dataset)
         assert len(video_sampler) == 5
         assert len(video_sampler.indices) == 1
 
     def test_iter_concat_dataset(self):
         single_dataset = MOTChallengeDataset(
-            data_prefix=dict(img_path='imgs'),
-            ann_file='tests/data/mot_sample.json',
-            metainfo=dict(classes=('pedestrian')),
+            data_prefix=dict(img_path="imgs"),
+            ann_file="tests/data/mot_sample.json",
+            metainfo=dict(classes=("pedestrian")),
             filter_cfg=dict(filter_empty_gt=True, min_size=32),
             test_mode=False,
-            pipeline=[])
+            pipeline=[],
+        )
 
         dataset = ConcatDataset([single_dataset, deepcopy(single_dataset)])
         video_sampler = TrackImgSampler(dataset)
@@ -69,13 +71,14 @@ class TestTrackImgSampler(TestCase):
 
     def test_iter_class_balanced_dataset(self):
         single_dataset = MOTChallengeDataset(
-            data_prefix=dict(img_path='imgs'),
-            ann_file='tests/data/mot_sample.json',
-            metainfo=dict(classes=('pedestrian', 'person_on_vehicle')),
+            data_prefix=dict(img_path="imgs"),
+            ann_file="tests/data/mot_sample.json",
+            metainfo=dict(classes=("pedestrian", "person_on_vehicle")),
             filter_cfg=dict(filter_empty_gt=True, min_size=32),
             visibility_thr=0.1,
             test_mode=False,
-            pipeline=[])
+            pipeline=[],
+        )
 
         dataset = ClassBalancedDataset(single_dataset, oversample_thr=0.6)
         video_sampler = TrackImgSampler(dataset)

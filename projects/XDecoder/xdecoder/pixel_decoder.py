@@ -4,31 +4,37 @@ from torch import nn
 from torch.nn import functional as F
 
 from mmdet.registry import MODELS
-from .transformer_blocks import (Conv2d, PositionEmbeddingSine,
-                                 TransformerEncoder, TransformerEncoderLayer,
-                                 get_norm)
+from .transformer_blocks import (
+    Conv2d,
+    PositionEmbeddingSine,
+    TransformerEncoder,
+    TransformerEncoderLayer,
+    get_norm,
+)
 
 # modified from https://github.com/microsoft/X-Decoder/blob/main/xdecoder/body/encoder/transformer_encoder_fpn.py # noqa
 
 
 class TransformerEncoderOnly(nn.Module):
-
-    def __init__(self,
-                 d_model=512,
-                 nhead=8,
-                 num_encoder_layers=6,
-                 dim_feedforward=2048,
-                 dropout=0.1,
-                 activation='relu',
-                 normalize_before=False):
+    def __init__(
+        self,
+        d_model=512,
+        nhead=8,
+        num_encoder_layers=6,
+        dim_feedforward=2048,
+        dropout=0.1,
+        activation="relu",
+        normalize_before=False,
+    ):
         super().__init__()
 
-        encoder_layer = TransformerEncoderLayer(d_model, nhead,
-                                                dim_feedforward, dropout,
-                                                activation, normalize_before)
+        encoder_layer = TransformerEncoderLayer(
+            d_model, nhead, dim_feedforward, dropout, activation, normalize_before
+        )
         encoder_norm = nn.LayerNorm(d_model) if normalize_before else None
-        self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers,
-                                          encoder_norm)
+        self.encoder = TransformerEncoder(
+            encoder_layer, num_encoder_layers, encoder_norm
+        )
 
         self._reset_parameters()
 
@@ -53,7 +59,6 @@ class TransformerEncoderOnly(nn.Module):
 
 
 class BasePixelDecoder(nn.Module):
-
     def __init__(
         self,
         in_channels,
@@ -67,7 +72,7 @@ class BasePixelDecoder(nn.Module):
         lateral_convs = []
         output_convs = []
 
-        use_bias = norm == ''
+        use_bias = norm == ""
         for idx, in_channel in enumerate(in_channels):
             if idx == len(in_channels) - 1:
                 output_norm = get_norm(norm, conv_dim)
@@ -81,7 +86,7 @@ class BasePixelDecoder(nn.Module):
                     norm=output_norm,
                     activation=F.relu,
                 )
-                self.add_module('layer_{}'.format(idx + 1), output_conv)
+                self.add_module("layer_{}".format(idx + 1), output_conv)
 
                 lateral_convs.append(None)
                 output_convs.append(output_conv)
@@ -94,7 +99,8 @@ class BasePixelDecoder(nn.Module):
                     conv_dim,
                     kernel_size=1,
                     bias=use_bias,
-                    norm=lateral_norm)
+                    norm=lateral_norm,
+                )
                 output_conv = Conv2d(
                     conv_dim,
                     conv_dim,
@@ -105,8 +111,8 @@ class BasePixelDecoder(nn.Module):
                     norm=output_norm,
                     activation=F.relu,
                 )
-                self.add_module('adapter_{}'.format(idx + 1), lateral_conv)
-                self.add_module('layer_{}'.format(idx + 1), output_conv)
+                self.add_module("adapter_{}".format(idx + 1), lateral_conv)
+                self.add_module("layer_{}".format(idx + 1), output_conv)
 
                 lateral_convs.append(lateral_conv)
                 output_convs.append(output_conv)
@@ -132,7 +138,6 @@ class BasePixelDecoder(nn.Module):
 # we change the name to XTransformerEncoderPixelDecoder
 @MODELS.register_module()
 class XTransformerEncoderPixelDecoder(BasePixelDecoder):
-
     def __init__(
         self,
         in_channels,
@@ -143,17 +148,13 @@ class XTransformerEncoderPixelDecoder(BasePixelDecoder):
         transformer_pre_norm: bool = False,
         conv_dim: int = 512,
         mask_dim: int = 512,
-        norm: Optional[Union[str, Callable]] = 'GN',
+        norm: Optional[Union[str, Callable]] = "GN",
     ):
-
         super().__init__(
-            in_channels,
-            conv_dim=conv_dim,
-            mask_dim=mask_dim,
-            norm=norm,
-            mask_on=True)
+            in_channels, conv_dim=conv_dim, mask_dim=mask_dim, norm=norm, mask_on=True
+        )
 
-        self.in_features = ['res2', 'res3', 'res4', 'res5']
+        self.in_features = ["res2", "res3", "res4", "res5"]
         feature_channels = in_channels
 
         in_channels = feature_channels[len(in_channels) - 1]
@@ -169,7 +170,7 @@ class XTransformerEncoderPixelDecoder(BasePixelDecoder):
         self.pe_layer = PositionEmbeddingSine(conv_dim // 2, normalize=True)
 
         # update layer
-        use_bias = norm == ''
+        use_bias = norm == ""
         output_norm = get_norm(norm, conv_dim)
         output_conv = Conv2d(
             conv_dim,
@@ -181,8 +182,8 @@ class XTransformerEncoderPixelDecoder(BasePixelDecoder):
             norm=output_norm,
             activation=F.relu,
         )
-        delattr(self, 'layer_{}'.format(len(self.in_features)))
-        self.add_module('layer_{}'.format(len(self.in_features)), output_conv)
+        delattr(self, "layer_{}".format(len(self.in_features)))
+        self.add_module("layer_{}".format(len(self.in_features)), output_conv)
         self.output_convs[0] = output_conv
 
     def forward(self, features):
@@ -203,8 +204,7 @@ class XTransformerEncoderPixelDecoder(BasePixelDecoder):
             else:
                 cur_fpn = lateral_conv(x)
                 # Following FPN implementation, we use nearest upsampling here
-                y = cur_fpn + F.interpolate(
-                    y, size=cur_fpn.shape[-2:], mode='nearest')
+                y = cur_fpn + F.interpolate(y, size=cur_fpn.shape[-2:], mode="nearest")
                 y = output_conv(y)
             if num_cur_levels < self.maskformer_num_feature_levels:
                 multi_scale_features.append(y)

@@ -7,6 +7,6 @@
 from mmengine.config import read_base
 
 with read_base():
-    from .deformable_detr_r50_16xb2_50e_coco import *
+    from .deformable_detr_r50_16xb2_50e_coco import model
 
 model.update(dict(with_box_refine=True))

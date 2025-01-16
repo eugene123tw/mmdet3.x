@@ -33,10 +33,12 @@ class ClassAwareSampler(Sampler):
             per-label list. Defaults to 1.
     """
 
-    def __init__(self,
-                 dataset: BaseDataset,
-                 seed: Optional[int] = None,
-                 num_sample_class: int = 1) -> None:
+    def __init__(
+        self,
+        dataset: BaseDataset,
+        seed: Optional[int] = None,
+        num_sample_class: int = 1,
+    ) -> None:
         rank, world_size = get_dist_info()
         self.rank = rank
         self.world_size = world_size
@@ -75,9 +77,9 @@ class ClassAwareSampler(Sampler):
             the item of the dict indicates a label index,
             corresponds to the image index that contains the label.
         """
-        classes = self.dataset.metainfo.get('classes', None)
+        classes = self.dataset.metainfo.get("classes", None)
         if classes is None:
-            raise ValueError('dataset metainfo must contain `classes`')
+            raise ValueError("dataset metainfo must contain `classes`")
         # sort the label index
         cat2imgs = {i: [] for i in range(len(classes))}
         for i in range(len(self.dataset)):
@@ -111,23 +113,24 @@ class ClassAwareSampler(Sampler):
 
         # deterministically shuffle based on epoch
         num_bins = int(
-            math.ceil(self.total_size * 1.0 / self.num_classes /
-                      self.num_sample_class))
+            math.ceil(self.total_size * 1.0 / self.num_classes / self.num_sample_class)
+        )
         indices = []
         for i in range(num_bins):
-            indices += gen_cat_img_inds(label_iter_list, data_iter_dict,
-                                        self.num_sample_class)
+            indices += gen_cat_img_inds(
+                label_iter_list, data_iter_dict, self.num_sample_class
+            )
 
         # fix extra samples to make it evenly divisible
         if len(indices) >= self.total_size:
-            indices = indices[:self.total_size]
+            indices = indices[: self.total_size]
         else:
-            indices += indices[:(self.total_size - len(indices))]
+            indices += indices[: (self.total_size - len(indices))]
         assert len(indices) == self.total_size
 
         # subsample
         offset = self.num_samples * self.rank
-        indices = indices[offset:offset + self.num_samples]
+        indices = indices[offset : offset + self.num_samples]
         assert len(indices) == self.num_samples
 
         return iter(indices)
@@ -167,9 +170,9 @@ class RandomCycleIter:
             for generating random numbers.
     """  # noqa: W605
 
-    def __init__(self,
-                 data: Union[list, np.ndarray],
-                 generator: torch.Generator = None) -> None:
+    def __init__(
+        self, data: Union[list, np.ndarray], generator: torch.Generator = None
+    ) -> None:
         self.data = data
         self.length = len(data)
         self.index = torch.randperm(self.length, generator=generator).numpy()
@@ -184,8 +187,7 @@ class RandomCycleIter:
 
     def __next__(self):
         if self.i == self.length:
-            self.index = torch.randperm(
-                self.length, generator=self.generator).numpy()
+            self.index = torch.randperm(self.length, generator=self.generator).numpy()
             self.i = 0
         idx = self.data[self.index[self.i]]
         self.i += 1

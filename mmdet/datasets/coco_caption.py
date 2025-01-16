@@ -15,16 +15,16 @@ class CocoCaptionDataset(BaseDataset):
 
     def load_data_list(self) -> List[dict]:
         """Load data list."""
-        img_prefix = self.data_prefix['img_path']
+        img_prefix = self.data_prefix["img_path"]
         annotations = mmengine.load(self.ann_file)
         file_backend = get_file_backend(img_prefix)
 
         data_list = []
         for ann in annotations:
             data_info = {
-                'img_id': Path(ann['image']).stem.split('_')[-1],
-                'img_path': file_backend.join_path(img_prefix, ann['image']),
-                'gt_caption': ann['caption'],
+                "img_id": Path(ann["image"]).stem.split("_")[-1],
+                "img_path": file_backend.join_path(img_prefix, ann["image"]),
+                "gt_caption": ann["caption"],
             }
 
             data_list.append(data_info)

@@ -20,10 +20,11 @@ def _get_config_directory():
     except NameError:
         # For IPython development when this __file__ is not defined
         import mmdet
+
         repo_dpath = dirname(dirname(mmdet.__file__))
-    config_dpath = join(repo_dpath, 'configs')
+    config_dpath = join(repo_dpath, "configs")
     if not exists(config_dpath):
-        raise Exception('Cannot find config path')
+        raise Exception("Cannot find config path")
     return config_dpath
 
 
@@ -59,29 +60,31 @@ def _traversed_config_file():
     check_cfg_names = []
 
     # `base`, `legacy_1.x` and `common` ignored by default.
-    ignores_folder = ['_base_', 'legacy_1.x', 'common']
+    ignores_folder = ["_base_", "legacy_1.x", "common"]
     # 'ld' need load teacher model, if want to check 'ld',
     # please check teacher_config path first.
-    ignores_folder += ['ld']
+    ignores_folder += ["ld"]
     # `selfsup_pretrain` need convert model, if want to check this model,
     # need to convert the model first.
-    ignores_folder += ['selfsup_pretrain']
+    ignores_folder += ["selfsup_pretrain"]
 
     # the `init_cfg` in 'centripetalnet', 'cornernet', 'cityscapes',
     # 'scratch' is None.
     # the `init_cfg` in ssdlite(`ssdlite_mobilenetv2_scratch_600e_coco.py`)
     # is None
     # Please confirm `bockbone.init_cfg` is None first.
-    ignores_folder += ['centripetalnet', 'cornernet', 'cityscapes', 'scratch']
-    ignores_file = ['ssdlite_mobilenetv2_scratch_600e_coco.py']
+    ignores_folder += ["centripetalnet", "cornernet", "cityscapes", "scratch"]
+    ignores_file = ["ssdlite_mobilenetv2_scratch_600e_coco.py"]
 
     for config_file_name in os.listdir(config_path):
         if config_file_name not in ignores_folder:
             config_file = join(config_path, config_file_name)
             if os.path.isdir(config_file):
                 for config_sub_file in os.listdir(config_file):
-                    if config_sub_file.endswith('py') and \
-                            config_sub_file not in ignores_file:
+                    if (
+                        config_sub_file.endswith("py")
+                        and config_sub_file not in ignores_file
+                    ):
                         name = join(config_file, config_sub_file)
                         check_cfg_names.append(name)
     return check_cfg_names
@@ -109,7 +112,7 @@ def _check_backbone(config, print_cfg=True):
             checkpoint, return None; else, return config file path.
     """
     if print_cfg:
-        print('-' * 15 + 'loading ', config)
+        print("-" * 15 + "loading ", config)
     cfg = Config.fromfile(config)
     init_cfg = None
     try:
@@ -117,12 +120,12 @@ def _check_backbone(config, print_cfg=True):
         init_flag = True
     except AttributeError:
         init_flag = False
-    if init_cfg is None or init_cfg.get('type') != 'Pretrained':
+    if init_cfg is None or init_cfg.get("type") != "Pretrained":
         init_flag = False
     if init_flag:
         checkpoint = CheckpointLoader.load_checkpoint(init_cfg.checkpoint)
-        if 'state_dict' in checkpoint:
-            state_dict = checkpoint['state_dict']
+        if "state_dict" in checkpoint:
+            state_dict = checkpoint["state_dict"]
         else:
             state_dict = checkpoint
 
@@ -135,17 +138,24 @@ def _check_backbone(config, print_cfg=True):
                 assert value.equal(state_dict[name])
 
         if print_cfg:
-            print('-' * 10 + 'Successfully load checkpoint' + '-' * 10 +
-                  '\n', )
+            print(
+                "-" * 10 + "Successfully load checkpoint" + "-" * 10 + "\n",
+            )
             return None
     else:
         if print_cfg:
-            print(config + '\n' + '-' * 10 +
-                  'config file do not have init_cfg' + '-' * 10 + '\n')
+            print(
+                config
+                + "\n"
+                + "-" * 10
+                + "config file do not have init_cfg"
+                + "-" * 10
+                + "\n"
+            )
             return config
 
 
-@pytest.mark.parametrize('config', _traversed_config_file())
+@pytest.mark.parametrize("config", _traversed_config_file())
 def test_load_pretrained(config):
     """Check out backbone whether successfully load pretrained model by using
     `backbone.init_cfg`.
@@ -174,5 +184,5 @@ def _test_load_pretrained():
         if init_cfg_name is not None:
             need_check_cfg.append(init_cfg_name)
         prog_bar.update()
-    print('These config files need to be checked again')
+    print("These config files need to be checked again")
     print(need_check_cfg)

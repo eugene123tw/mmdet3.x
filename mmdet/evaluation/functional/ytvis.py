@@ -1,7 +1,7 @@
 # Copyright (c) Github URL
 # Copied from
 # https://github.com/youtubevos/cocoapi/blob/master/PythonAPI/pycocotools/ytvos.py
-__author__ = 'ychfan'
+__author__ = "ychfan"
 # Interface for accessing the YouTubeVIS dataset.
 
 # The following API functions are defined:
@@ -37,11 +37,10 @@ PYTHON_VERSION = sys.version_info[0]
 
 
 def _isArrayLike(obj):
-    return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
+    return hasattr(obj, "__iter__") and hasattr(obj, "__len__")
 
 
 class YTVIS:
-
     def __init__(self, annotation_file=None):
         """Constructor of Microsoft COCO helper class for reading and
         visualizing annotations.
@@ -52,47 +51,45 @@ class YTVIS:
         :return:
         """
         # load dataset
-        self.dataset, self.anns, self.cats, self.vids = dict(), dict(), dict(
-        ), dict()
+        self.dataset, self.anns, self.cats, self.vids = dict(), dict(), dict(), dict()
         self.vidToAnns, self.catToVids = defaultdict(list), defaultdict(list)
         if annotation_file is not None:
-            print('loading annotations into memory...')
+            print("loading annotations into memory...")
             tic = time.time()
             if type(annotation_file) == str:
-                dataset = json.load(open(annotation_file, 'r'))
+                dataset = json.load(open(annotation_file, "r"))
             else:
                 dataset = annotation_file
-            assert type(
-                dataset
-            ) == dict, 'annotation file format {} not supported'.format(
-                type(dataset))
-            print('Done (t={:0.2f}s)'.format(time.time() - tic))
+            assert (
+                type(dataset) == dict
+            ), "annotation file format {} not supported".format(type(dataset))
+            print("Done (t={:0.2f}s)".format(time.time() - tic))
             self.dataset = dataset
             self.createIndex()
 
     def createIndex(self):
         # create index
-        print('creating index...')
+        print("creating index...")
         anns, cats, vids = {}, {}, {}
         vidToAnns, catToVids = defaultdict(list), defaultdict(list)
-        if 'annotations' in self.dataset:
-            for ann in self.dataset['annotations']:
-                vidToAnns[ann['video_id']].append(ann)
-                anns[ann['id']] = ann
+        if "annotations" in self.dataset:
+            for ann in self.dataset["annotations"]:
+                vidToAnns[ann["video_id"]].append(ann)
+                anns[ann["id"]] = ann
 
-        if 'videos' in self.dataset:
-            for vid in self.dataset['videos']:
-                vids[vid['id']] = vid
+        if "videos" in self.dataset:
+            for vid in self.dataset["videos"]:
+                vids[vid["id"]] = vid
 
-        if 'categories' in self.dataset:
-            for cat in self.dataset['categories']:
-                cats[cat['id']] = cat
+        if "categories" in self.dataset:
+            for cat in self.dataset["categories"]:
+                cats[cat["id"]] = cat
 
-        if 'annotations' in self.dataset and 'categories' in self.dataset:
-            for ann in self.dataset['annotations']:
-                catToVids[ann['category_id']].append(ann['video_id'])
+        if "annotations" in self.dataset and "categories" in self.dataset:
+            for ann in self.dataset["annotations"]:
+                catToVids[ann["category_id"]].append(ann["video_id"])
 
-        print('index created!')
+        print("index created!")
 
         # create class members
         self.anns = anns
@@ -115,27 +112,33 @@ class YTVIS:
         catIds = catIds if _isArrayLike(catIds) else [catIds]
 
         if len(vidIds) == len(catIds) == len(areaRng) == 0:
-            anns = self.dataset['annotations']
+            anns = self.dataset["annotations"]
         else:
             if not len(vidIds) == 0:
                 lists = [
-                    self.vidToAnns[vidId] for vidId in vidIds
-                    if vidId in self.vidToAnns
+                    self.vidToAnns[vidId] for vidId in vidIds if vidId in self.vidToAnns
                 ]
                 anns = list(itertools.chain.from_iterable(lists))
             else:
-                anns = self.dataset['annotations']
-            anns = anns if len(catIds) == 0 else [
-                ann for ann in anns if ann['category_id'] in catIds
-            ]
-            anns = anns if len(areaRng) == 0 else [
-                ann for ann in anns if ann['avg_area'] > areaRng[0]
-                and ann['avg_area'] < areaRng[1]
-            ]
+                anns = self.dataset["annotations"]
+            anns = (
+                anns
+                if len(catIds) == 0
+                else [ann for ann in anns if ann["category_id"] in catIds]
+            )
+            anns = (
+                anns
+                if len(areaRng) == 0
+                else [
+                    ann
+                    for ann in anns
+                    if ann["avg_area"] > areaRng[0] and ann["avg_area"] < areaRng[1]
+                ]
+            )
         if iscrowd is not None:
-            ids = [ann['id'] for ann in anns if ann['iscrowd'] == iscrowd]
+            ids = [ann["id"] for ann in anns if ann["iscrowd"] == iscrowd]
         else:
-            ids = [ann['id'] for ann in anns]
+            ids = [ann["id"] for ann in anns]
         return ids
 
     def getCatIds(self, catNms=[], supNms=[], catIds=[]):
@@ -151,19 +154,25 @@ class YTVIS:
         catIds = catIds if _isArrayLike(catIds) else [catIds]
 
         if len(catNms) == len(supNms) == len(catIds) == 0:
-            cats = self.dataset['categories']
+            cats = self.dataset["categories"]
         else:
-            cats = self.dataset['categories']
-            cats = cats if len(catNms) == 0 else [
-                cat for cat in cats if cat['name'] in catNms
-            ]
-            cats = cats if len(supNms) == 0 else [
-                cat for cat in cats if cat['supercategory'] in supNms
-            ]
-            cats = cats if len(catIds) == 0 else [
-                cat for cat in cats if cat['id'] in catIds
-            ]
-        ids = [cat['id'] for cat in cats]
+            cats = self.dataset["categories"]
+            cats = (
+                cats
+                if len(catNms) == 0
+                else [cat for cat in cats if cat["name"] in catNms]
+            )
+            cats = (
+                cats
+                if len(supNms) == 0
+                else [cat for cat in cats if cat["supercategory"] in supNms]
+            )
+            cats = (
+                cats
+                if len(catIds) == 0
+                else [cat for cat in cats if cat["id"] in catIds]
+            )
+        ids = [cat["id"] for cat in cats]
         return ids
 
     def getVidIds(self, vidIds=[], catIds=[]):
@@ -227,49 +236,48 @@ class YTVIS:
         :return: res (obj)         : result api object
         """
         res = YTVIS()
-        res.dataset['videos'] = [img for img in self.dataset['videos']]
+        res.dataset["videos"] = [img for img in self.dataset["videos"]]
 
-        print('Loading and preparing results...')
+        print("Loading and preparing results...")
         tic = time.time()
-        if type(resFile) == str or (PYTHON_VERSION == 2
-                                    and type(resFile) == str):
+        if type(resFile) == str or (PYTHON_VERSION == 2 and type(resFile) == str):
             anns = json.load(open(resFile))
         elif type(resFile) == np.ndarray:
             anns = self.loadNumpyAnnotations(resFile)
         else:
             anns = resFile
-        assert type(anns) == list, 'results in not an array of objects'
-        annsVidIds = [ann['video_id'] for ann in anns]
-        assert set(annsVidIds) == (set(annsVidIds) & set(self.getVidIds())), \
-               'Results do not correspond to current coco set'
-        if 'segmentations' in anns[0]:
-            res.dataset['categories'] = copy.deepcopy(
-                self.dataset['categories'])
+        assert type(anns) == list, "results in not an array of objects"
+        annsVidIds = [ann["video_id"] for ann in anns]
+        assert set(annsVidIds) == (
+            set(annsVidIds) & set(self.getVidIds())
+        ), "Results do not correspond to current coco set"
+        if "segmentations" in anns[0]:
+            res.dataset["categories"] = copy.deepcopy(self.dataset["categories"])
             for id, ann in enumerate(anns):
-                ann['areas'] = []
-                if 'bboxes' not in ann:
-                    ann['bboxes'] = []
-                for seg in ann['segmentations']:
+                ann["areas"] = []
+                if "bboxes" not in ann:
+                    ann["bboxes"] = []
+                for seg in ann["segmentations"]:
                     # now only support compressed RLE format
                     # as segmentation results
                     if seg:
-                        ann['areas'].append(maskUtils.area(seg))
-                        if len(ann['bboxes']) < len(ann['areas']):
-                            ann['bboxes'].append(maskUtils.toBbox(seg))
+                        ann["areas"].append(maskUtils.area(seg))
+                        if len(ann["bboxes"]) < len(ann["areas"]):
+                            ann["bboxes"].append(maskUtils.toBbox(seg))
                     else:
-                        ann['areas'].append(None)
-                        if len(ann['bboxes']) < len(ann['areas']):
-                            ann['bboxes'].append(None)
-                ann['id'] = id + 1
-                l_ori = [a for a in ann['areas'] if a]
+                        ann["areas"].append(None)
+                        if len(ann["bboxes"]) < len(ann["areas"]):
+                            ann["bboxes"].append(None)
+                ann["id"] = id + 1
+                l_ori = [a for a in ann["areas"] if a]
                 if len(l_ori) == 0:
-                    ann['avg_area'] = 0
+                    ann["avg_area"] = 0
                 else:
-                    ann['avg_area'] = np.array(l_ori).mean()
-                ann['iscrowd'] = 0
-        print('DONE (t={:0.2f}s)'.format(time.time() - tic))
+                    ann["avg_area"] = np.array(l_ori).mean()
+                ann["iscrowd"] = 0
+        print("DONE (t={:0.2f}s)".format(time.time() - tic))
 
-        res.dataset['annotations'] = anns
+        res.dataset["annotations"] = anns
         res.createIndex()
         return res
 
@@ -278,15 +286,15 @@ class YTVIS:
 
         :return: binary mask (numpy 2D array)
         """
-        t = self.vids[ann['video_id']]
-        h, w = t['height'], t['width']
-        segm = ann['segmentations'][frameId]
+        t = self.vids[ann["video_id"]]
+        h, w = t["height"], t["width"]
+        segm = ann["segmentations"][frameId]
         if type(segm) == list:
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
             rles = maskUtils.frPyObjects(segm, h, w)
             rle = maskUtils.merge(rles)
-        elif type(segm['counts']) == list:
+        elif type(segm["counts"]) == list:
             # uncompressed RLE
             rle = maskUtils.frPyObjects(segm, h, w)
         else:

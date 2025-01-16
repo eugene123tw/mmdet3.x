@@ -22,10 +22,7 @@ class TemporalBlock(BaseModule):
         out_channel (int): the dimension of the output channels.
     """
 
-    def __init__(self,
-                 in_channel: int,
-                 out_channel: int,
-                 kernel_size: tuple = (7, 1)):
+    def __init__(self, in_channel: int, out_channel: int, kernel_size: tuple = (7, 1)):
         super(TemporalBlock, self).__init__()
         self.conv = nn.Conv2d(in_channel, out_channel, kernel_size, bias=False)
         self.relu = nn.ReLU(inplace=True)
@@ -91,22 +88,30 @@ class Classifier(BaseModule):
 class AFLinkModel(BaseModule):
     """Appearance-Free Link Model."""
 
-    def __init__(self,
-                 temporal_module_channels: list = [1, 32, 64, 128, 256],
-                 fusion_module_channels: list = [256, 256],
-                 classifier_channels: list = [256, 2]):
+    def __init__(
+        self,
+        temporal_module_channels: list = [1, 32, 64, 128, 256],
+        fusion_module_channels: list = [256, 256],
+        classifier_channels: list = [256, 2],
+    ):
         super(AFLinkModel, self).__init__()
-        self.TemporalModule_1 = nn.Sequential(*[
-            TemporalBlock(temporal_module_channels[i],
-                          temporal_module_channels[i + 1])
-            for i in range(len(temporal_module_channels) - 1)
-        ])
+        self.TemporalModule_1 = nn.Sequential(
+            *[
+                TemporalBlock(
+                    temporal_module_channels[i], temporal_module_channels[i + 1]
+                )
+                for i in range(len(temporal_module_channels) - 1)
+            ]
+        )
 
-        self.TemporalModule_2 = nn.Sequential(*[
-            TemporalBlock(temporal_module_channels[i],
-                          temporal_module_channels[i + 1])
-            for i in range(len(temporal_module_channels) - 1)
-        ])
+        self.TemporalModule_2 = nn.Sequential(
+            *[
+                TemporalBlock(
+                    temporal_module_channels[i], temporal_module_channels[i + 1]
+                )
+                for i in range(len(temporal_module_channels) - 1)
+            ]
+        )
 
         self.FusionBlock_1 = FusionBlock(*fusion_module_channels)
         self.FusionBlock_2 = FusionBlock(*fusion_module_channels)
@@ -115,7 +120,7 @@ class AFLinkModel(BaseModule):
         self.classifier = Classifier(*classifier_channels)
 
     def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
-        assert not self.training, 'Only testing is supported for AFLink.'
+        assert not self.training, "Only testing is supported for AFLink."
         x1 = x1[:, :, :, :3]
         x2 = x2[:, :, :, :3]
         x1 = self.TemporalModule_1(x1)  # [B,1,30,3] -> [B,256,6,3]
@@ -147,11 +152,13 @@ class AppearanceFreeLink(BaseModule):
             threshold for tracklets association. Defaults to 0.95.
     """
 
-    def __init__(self,
-                 checkpoint: str,
-                 temporal_threshold: tuple = (0, 30),
-                 spatial_threshold: int = 75,
-                 confidence_threshold: float = 0.95):
+    def __init__(
+        self,
+        checkpoint: str,
+        temporal_threshold: tuple = (0, 30),
+        spatial_threshold: int = 75,
+        confidence_threshold: float = 0.95,
+    ):
         super(AppearanceFreeLink, self).__init__()
         self.temporal_threshold = temporal_threshold
         self.spatial_threshold = spatial_threshold
@@ -167,10 +174,9 @@ class AppearanceFreeLink(BaseModule):
         self.device = next(self.model.parameters()).device
         self.fn_l2 = lambda x, y: np.sqrt(x**2 + y**2)
 
-    def data_transform(self,
-                       track1: np.ndarray,
-                       track2: np.ndarray,
-                       length: int = 30) -> Tuple[np.ndarray]:
+    def data_transform(
+        self, track1: np.ndarray, track2: np.ndarray, length: int = 30
+    ) -> Tuple[np.ndarray]:
         """Data Transformation. This is used to standardize the length of
         tracks to a unified length. Then perform min-max normalization to the
         motion embeddings.
@@ -185,13 +191,19 @@ class AppearanceFreeLink(BaseModule):
         """
         # fill or cut track1
         length_1 = track1.shape[0]
-        track1 = track1[-length:] if length_1 >= length else \
-            np.pad(track1, ((length - length_1, 0), (0, 0)))
+        track1 = (
+            track1[-length:]
+            if length_1 >= length
+            else np.pad(track1, ((length - length_1, 0), (0, 0)))
+        )
 
         # fill or cut track1
         length_2 = track2.shape[0]
-        track2 = track2[:length] if length_2 >= length else \
-            np.pad(track2, ((0, length - length_2), (0, 0)))
+        track2 = (
+            track2[:length]
+            if length_2 >= length
+            else np.pad(track2, ((0, length - length_2), (0, 0)))
+        )
 
         # min-max normalization
         min_ = np.concatenate((track1, track2), axis=0).min(axis=0)
@@ -235,26 +247,28 @@ class AppearanceFreeLink(BaseModule):
                 frame_i, box_i = info_i[-1][0], info_i[-1][1:3]
                 frame_j, box_j = info_j[0][0], info_j[0][1:3]
                 # temporal constraint
-                if not self.temporal_threshold[0] <= \
-                        frame_j - frame_i <= self.temporal_threshold[1]:
+                if (
+                    not self.temporal_threshold[0]
+                    <= frame_j - frame_i
+                    <= self.temporal_threshold[1]
+                ):
                     continue
                 # spatial constraint
-                if self.fn_l2(box_i[0] - box_j[0], box_i[1] - box_j[1]) \
-                        > self.spatial_threshold:
+                if (
+                    self.fn_l2(box_i[0] - box_j[0], box_i[1] - box_j[1])
+                    > self.spatial_threshold
+                ):
                     continue
                 # confidence constraint
                 track_i, track_j = self.data_transform(info_i, info_j)
 
                 # numpy to torch
-                track_i = torch.tensor(
-                    track_i, dtype=torch.float).to(self.device)
-                track_j = torch.tensor(
-                    track_j, dtype=torch.float).to(self.device)
+                track_i = torch.tensor(track_i, dtype=torch.float).to(self.device)
+                track_j = torch.tensor(track_j, dtype=torch.float).to(self.device)
                 track_i = track_i.unsqueeze(0).unsqueeze(0)
                 track_j = track_j.unsqueeze(0).unsqueeze(0)
 
-                confidence = self.model(track_i,
-                                        track_j).detach().cpu().numpy()
+                confidence = self.model(track_i, track_j).detach().cpu().numpy()
                 if confidence >= self.confidence_threshold:
                     cost_matrix[i, j] = 1 - confidence
 

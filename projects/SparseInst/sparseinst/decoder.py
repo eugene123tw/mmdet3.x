@@ -11,10 +11,9 @@ from torch.nn import init
 from mmdet.registry import MODELS
 
 
-def _make_stack_3x3_convs(num_convs,
-                          in_channels,
-                          out_channels,
-                          act_cfg=dict(type='ReLU', inplace=True)):
+def _make_stack_3x3_convs(
+    num_convs, in_channels, out_channels, act_cfg=dict(type="ReLU", inplace=True)
+):
     convs = []
     for _ in range(num_convs):
         convs.append(nn.Conv2d(in_channels, out_channels, 3, padding=1))
@@ -24,21 +23,21 @@ def _make_stack_3x3_convs(num_convs,
 
 
 class InstanceBranch(nn.Module):
-
-    def __init__(self,
-                 in_channels,
-                 dim=256,
-                 num_convs=4,
-                 num_masks=100,
-                 num_classes=80,
-                 kernel_dim=128,
-                 act_cfg=dict(type='ReLU', inplace=True)):
+    def __init__(
+        self,
+        in_channels,
+        dim=256,
+        num_convs=4,
+        num_masks=100,
+        num_classes=80,
+        kernel_dim=128,
+        act_cfg=dict(type="ReLU", inplace=True),
+    ):
         super().__init__()
         num_masks = num_masks
         self.num_classes = num_classes
 
-        self.inst_convs = _make_stack_3x3_convs(num_convs, in_channels, dim,
-                                                act_cfg)
+        self.inst_convs = _make_stack_3x3_convs(num_convs, in_channels, dim, act_cfg)
         # iam prediction, a simple conv
         self.iam_conv = nn.Conv2d(dim, num_masks, 3, padding=1)
 
@@ -77,8 +76,7 @@ class InstanceBranch(nn.Module):
         normalizer = iam_prob.sum(-1).clamp(min=1e-6)
         iam_prob = iam_prob / normalizer[:, :, None]
         # aggregate features: BxCxHxW -> Bx(HW)xC
-        inst_features = torch.bmm(iam_prob,
-                                  features.view(B, C, -1).permute(0, 2, 1))
+        inst_features = torch.bmm(iam_prob, features.view(B, C, -1).permute(0, 2, 1))
         # predict classification & segmentation kernel & objectness
         pred_logits = self.cls_score(inst_features)
         pred_kernel = self.mask_kernel(inst_features)
@@ -87,16 +85,16 @@ class InstanceBranch(nn.Module):
 
 
 class MaskBranch(nn.Module):
-
-    def __init__(self,
-                 in_channels,
-                 dim=256,
-                 num_convs=4,
-                 kernel_dim=128,
-                 act_cfg=dict(type='ReLU', inplace=True)):
+    def __init__(
+        self,
+        in_channels,
+        dim=256,
+        num_convs=4,
+        kernel_dim=128,
+        act_cfg=dict(type="ReLU", inplace=True),
+    ):
         super().__init__()
-        self.mask_convs = _make_stack_3x3_convs(num_convs, in_channels, dim,
-                                                act_cfg)
+        self.mask_convs = _make_stack_3x3_convs(num_convs, in_channels, dim, act_cfg)
         self.projection = nn.Conv2d(dim, kernel_dim, kernel_size=1)
         self._init_weights()
 
@@ -114,19 +112,20 @@ class MaskBranch(nn.Module):
 
 @MODELS.register_module()
 class BaseIAMDecoder(nn.Module):
-
-    def __init__(self,
-                 in_channels,
-                 num_classes,
-                 ins_dim=256,
-                 ins_conv=4,
-                 mask_dim=256,
-                 mask_conv=4,
-                 kernel_dim=128,
-                 scale_factor=2.0,
-                 output_iam=False,
-                 num_masks=100,
-                 act_cfg=dict(type='ReLU', inplace=True)):
+    def __init__(
+        self,
+        in_channels,
+        num_classes,
+        ins_dim=256,
+        ins_conv=4,
+        mask_dim=256,
+        mask_conv=4,
+        kernel_dim=128,
+        scale_factor=2.0,
+        output_iam=False,
+        num_masks=100,
+        act_cfg=dict(type="ReLU", inplace=True),
+    ):
         super().__init__()
         # add 2 for coordinates
         in_channels = in_channels  # ENCODER.NUM_CHANNELS + 2
@@ -141,13 +140,15 @@ class BaseIAMDecoder(nn.Module):
             num_masks=num_masks,
             num_classes=num_classes,
             kernel_dim=kernel_dim,
-            act_cfg=act_cfg)
+            act_cfg=act_cfg,
+        )
         self.mask_branch = MaskBranch(
             in_channels,
             dim=mask_dim,
             num_convs=mask_conv,
             kernel_dim=kernel_dim,
-            act_cfg=act_cfg)
+            act_cfg=act_cfg,
+        )
 
     @torch.no_grad()
     def compute_coordinates_linspace(self, x):
@@ -181,58 +182,59 @@ class BaseIAMDecoder(nn.Module):
         N = pred_kernel.shape[1]
         # mask_features: BxCxHxW
         B, C, H, W = mask_features.shape
-        pred_masks = torch.bmm(pred_kernel,
-                               mask_features.view(B, C,
-                                                  H * W)).view(B, N, H, W)
+        pred_masks = torch.bmm(pred_kernel, mask_features.view(B, C, H * W)).view(
+            B, N, H, W
+        )
 
         pred_masks = F.interpolate(
             pred_masks,
             scale_factor=self.scale_factor,
-            mode='bilinear',
-            align_corners=False)
+            mode="bilinear",
+            align_corners=False,
+        )
 
         output = {
-            'pred_logits': pred_logits,
-            'pred_masks': pred_masks,
-            'pred_scores': pred_scores,
+            "pred_logits": pred_logits,
+            "pred_masks": pred_masks,
+            "pred_scores": pred_scores,
         }
 
         if self.output_iam:
             iam = F.interpolate(
                 iam,
                 scale_factor=self.scale_factor,
-                mode='bilinear',
-                align_corners=False)
-            output['pred_iam'] = iam
+                mode="bilinear",
+                align_corners=False,
+            )
+            output["pred_iam"] = iam
 
         return output
 
 
 class GroupInstanceBranch(nn.Module):
-
-    def __init__(self,
-                 in_channels,
-                 num_groups=4,
-                 dim=256,
-                 num_convs=4,
-                 num_masks=100,
-                 num_classes=80,
-                 kernel_dim=128,
-                 act_cfg=dict(type='ReLU', inplace=True)):
+    def __init__(
+        self,
+        in_channels,
+        num_groups=4,
+        dim=256,
+        num_convs=4,
+        num_masks=100,
+        num_classes=80,
+        kernel_dim=128,
+        act_cfg=dict(type="ReLU", inplace=True),
+    ):
         super().__init__()
         self.num_groups = num_groups
         self.num_classes = num_classes
 
         self.inst_convs = _make_stack_3x3_convs(
-            num_convs, in_channels, dim, act_cfg=act_cfg)
+            num_convs, in_channels, dim, act_cfg=act_cfg
+        )
         # iam prediction, a group conv
         expand_dim = dim * self.num_groups
         self.iam_conv = nn.Conv2d(
-            dim,
-            num_masks * self.num_groups,
-            3,
-            padding=1,
-            groups=self.num_groups)
+            dim, num_masks * self.num_groups, 3, padding=1, groups=self.num_groups
+        )
         # outputs
         self.fc = nn.Linear(expand_dim, expand_dim)
 
@@ -272,12 +274,13 @@ class GroupInstanceBranch(nn.Module):
         iam_prob = iam_prob / normalizer[:, :, None]
 
         # aggregate features: BxCxHxW -> Bx(HW)xC
-        inst_features = torch.bmm(iam_prob,
-                                  features.view(B, C, -1).permute(0, 2, 1))
+        inst_features = torch.bmm(iam_prob, features.view(B, C, -1).permute(0, 2, 1))
 
-        inst_features = inst_features.reshape(B, 4, N // self.num_groups,
-                                              -1).transpose(1, 2).reshape(
-                                                  B, N // self.num_groups, -1)
+        inst_features = (
+            inst_features.reshape(B, 4, N // self.num_groups, -1)
+            .transpose(1, 2)
+            .reshape(B, N // self.num_groups, -1)
+        )
 
         inst_features = F.relu_(self.fc(inst_features))
         # predict classification & segmentation kernel & objectness
@@ -289,20 +292,21 @@ class GroupInstanceBranch(nn.Module):
 
 @MODELS.register_module()
 class GroupIAMDecoder(BaseIAMDecoder):
-
-    def __init__(self,
-                 in_channels,
-                 num_classes,
-                 num_groups=4,
-                 ins_dim=256,
-                 ins_conv=4,
-                 mask_dim=256,
-                 mask_conv=4,
-                 kernel_dim=128,
-                 scale_factor=2.0,
-                 output_iam=False,
-                 num_masks=100,
-                 act_cfg=dict(type='ReLU', inplace=True)):
+    def __init__(
+        self,
+        in_channels,
+        num_classes,
+        num_groups=4,
+        ins_dim=256,
+        ins_conv=4,
+        mask_dim=256,
+        mask_conv=4,
+        kernel_dim=128,
+        scale_factor=2.0,
+        output_iam=False,
+        num_masks=100,
+        act_cfg=dict(type="ReLU", inplace=True),
+    ):
         super().__init__(
             in_channels=in_channels,
             num_classes=num_classes,
@@ -314,7 +318,8 @@ class GroupIAMDecoder(BaseIAMDecoder):
             scale_factor=scale_factor,
             output_iam=output_iam,
             num_masks=num_masks,
-            act_cfg=act_cfg)
+            act_cfg=act_cfg,
+        )
         self.inst_branch = GroupInstanceBranch(
             in_channels,
             num_groups=num_groups,
@@ -323,16 +328,20 @@ class GroupIAMDecoder(BaseIAMDecoder):
             num_masks=num_masks,
             num_classes=num_classes,
             kernel_dim=kernel_dim,
-            act_cfg=act_cfg)
+            act_cfg=act_cfg,
+        )
 
 
 class GroupInstanceSoftBranch(GroupInstanceBranch):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.softmax_bias = nn.Parameter(torch.ones([
-            1,
-        ]))
+        self.softmax_bias = nn.Parameter(
+            torch.ones(
+                [
+                    1,
+                ]
+            )
+        )
 
     def forward(self, features):
         # instance features (x4 convs)
@@ -345,13 +354,13 @@ class GroupInstanceSoftBranch(GroupInstanceBranch):
         # BxNxHxW -> BxNx(HW)
         iam_prob = F.softmax(iam.view(B, N, -1) + self.softmax_bias, dim=-1)
         # aggregate features: BxCxHxW -> Bx(HW)xC
-        inst_features = torch.bmm(iam_prob,
-                                  features.view(B, C, -1).permute(0, 2, 1))
+        inst_features = torch.bmm(iam_prob, features.view(B, C, -1).permute(0, 2, 1))
 
-        inst_features = inst_features.reshape(B, self.num_groups,
-                                              N // self.num_groups,
-                                              -1).transpose(1, 2).reshape(
-                                                  B, N // self.num_groups, -1)
+        inst_features = (
+            inst_features.reshape(B, self.num_groups, N // self.num_groups, -1)
+            .transpose(1, 2)
+            .reshape(B, N // self.num_groups, -1)
+        )
 
         inst_features = F.relu_(self.fc(inst_features))
         # predict classification & segmentation kernel & objectness
@@ -363,20 +372,21 @@ class GroupInstanceSoftBranch(GroupInstanceBranch):
 
 @MODELS.register_module()
 class GroupIAMSoftDecoder(BaseIAMDecoder):
-
-    def __init__(self,
-                 in_channels,
-                 num_classes,
-                 num_groups=4,
-                 ins_dim=256,
-                 ins_conv=4,
-                 mask_dim=256,
-                 mask_conv=4,
-                 kernel_dim=128,
-                 scale_factor=2.0,
-                 output_iam=False,
-                 num_masks=100,
-                 act_cfg=dict(type='ReLU', inplace=True)):
+    def __init__(
+        self,
+        in_channels,
+        num_classes,
+        num_groups=4,
+        ins_dim=256,
+        ins_conv=4,
+        mask_dim=256,
+        mask_conv=4,
+        kernel_dim=128,
+        scale_factor=2.0,
+        output_iam=False,
+        num_masks=100,
+        act_cfg=dict(type="ReLU", inplace=True),
+    ):
         super().__init__(
             in_channels=in_channels,
             num_classes=num_classes,
@@ -388,7 +398,8 @@ class GroupIAMSoftDecoder(BaseIAMDecoder):
             scale_factor=scale_factor,
             output_iam=output_iam,
             num_masks=num_masks,
-            act_cfg=act_cfg)
+            act_cfg=act_cfg,
+        )
         self.inst_branch = GroupInstanceSoftBranch(
             in_channels,
             num_groups=num_groups,
@@ -397,4 +408,5 @@ class GroupIAMSoftDecoder(BaseIAMDecoder):
             num_masks=num_masks,
             num_classes=num_classes,
             kernel_dim=kernel_dim,
-            act_cfg=act_cfg)
+            act_cfg=act_cfg,
+        )

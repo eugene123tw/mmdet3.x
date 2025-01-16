@@ -14,16 +14,16 @@ class ConditionalDetrTransformerDecoder(DetrTransformerDecoder):
 
     def _init_layers(self) -> None:
         """Initialize decoder layers and other layers."""
-        self.layers = ModuleList([
-            ConditionalDetrTransformerDecoderLayer(**self.layer_cfg)
-            for _ in range(self.num_layers)
-        ])
+        self.layers = ModuleList(
+            [
+                ConditionalDetrTransformerDecoderLayer(**self.layer_cfg)
+                for _ in range(self.num_layers)
+            ]
+        )
         self.embed_dims = self.layers[0].embed_dims
-        self.post_norm = build_norm_layer(self.post_norm_cfg,
-                                          self.embed_dims)[1]
+        self.post_norm = build_norm_layer(self.post_norm_cfg, self.embed_dims)[1]
         # conditional detr affline
-        self.query_scale = MLP(self.embed_dims, self.embed_dims,
-                               self.embed_dims, 2)
+        self.query_scale = MLP(self.embed_dims, self.embed_dims, self.embed_dims, 2)
         self.ref_point_head = MLP(self.embed_dims, self.embed_dims, 2, 2)
         # we have substitute 'qpos_proj' with 'qpos_sine_proj' except for
         # the first decoder layer), so 'qpos_proj' should be deleted
@@ -31,12 +31,14 @@ class ConditionalDetrTransformerDecoder(DetrTransformerDecoder):
         for layer_id in range(self.num_layers - 1):
             self.layers[layer_id + 1].cross_attn.qpos_proj = None
 
-    def forward(self,
-                query: Tensor,
-                key: Tensor = None,
-                query_pos: Tensor = None,
-                key_pos: Tensor = None,
-                key_padding_mask: Tensor = None):
+    def forward(
+        self,
+        query: Tensor,
+        key: Tensor = None,
+        query_pos: Tensor = None,
+        key_pos: Tensor = None,
+        key_padding_mask: Tensor = None,
+    ):
         """Forward function of decoder.
 
         Args:
@@ -60,8 +62,7 @@ class ConditionalDetrTransformerDecoder(DetrTransformerDecoder):
             with shape (1, bs, num_queries, dim). References with shape
             (bs, num_queries, 2).
         """
-        reference_unsigmoid = self.ref_point_head(
-            query_pos)  # [bs, num_queries, 2]
+        reference_unsigmoid = self.ref_point_head(query_pos)  # [bs, num_queries, 2]
         reference = reference_unsigmoid.sigmoid()
         reference_xy = reference[..., :2]
         intermediate = []
@@ -81,7 +82,8 @@ class ConditionalDetrTransformerDecoder(DetrTransformerDecoder):
                 key_pos=key_pos,
                 key_padding_mask=key_padding_mask,
                 ref_sine_embed=ref_sine_embed,
-                is_first=(layer_id == 0))
+                is_first=(layer_id == 0),
+            )
             if self.return_intermediate:
                 intermediate.append(self.post_norm(query))
 
@@ -103,21 +105,22 @@ class ConditionalDetrTransformerDecoderLayer(DetrTransformerDecoderLayer):
         self.embed_dims = self.self_attn.embed_dims
         self.ffn = FFN(**self.ffn_cfg)
         norms_list = [
-            build_norm_layer(self.norm_cfg, self.embed_dims)[1]
-            for _ in range(3)
+            build_norm_layer(self.norm_cfg, self.embed_dims)[1] for _ in range(3)
         ]
         self.norms = ModuleList(norms_list)
 
-    def forward(self,
-                query: Tensor,
-                key: Tensor = None,
-                query_pos: Tensor = None,
-                key_pos: Tensor = None,
-                self_attn_masks: Tensor = None,
-                cross_attn_masks: Tensor = None,
-                key_padding_mask: Tensor = None,
-                ref_sine_embed: Tensor = None,
-                is_first: bool = False):
+    def forward(
+        self,
+        query: Tensor,
+        key: Tensor = None,
+        query_pos: Tensor = None,
+        key_pos: Tensor = None,
+        self_attn_masks: Tensor = None,
+        cross_attn_masks: Tensor = None,
+        key_padding_mask: Tensor = None,
+        ref_sine_embed: Tensor = None,
+        is_first: bool = False,
+    ):
         """
         Args:
             query (Tensor): The input query, has shape (bs, num_queries, dim)
@@ -152,7 +155,8 @@ class ConditionalDetrTransformerDecoderLayer(DetrTransformerDecoderLayer):
             key=query,
             query_pos=query_pos,
             key_pos=query_pos,
-            attn_mask=self_attn_masks)
+            attn_mask=self_attn_masks,
+        )
         query = self.norms[0](query)
         query = self.cross_attn(
             query=query,
@@ -162,7 +166,8 @@ class ConditionalDetrTransformerDecoderLayer(DetrTransformerDecoderLayer):
             attn_mask=cross_attn_masks,
             key_padding_mask=key_padding_mask,
             ref_sine_embed=ref_sine_embed,
-            is_first=is_first)
+            is_first=is_first,
+        )
         query = self.norms[1](query)
         query = self.ffn(query)
         query = self.norms[2](query)

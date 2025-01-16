@@ -13,11 +13,9 @@ from mmdet.utils import InstanceList, OptInstanceList
 class HybridDINOHead(DINOHead):
     """Head of the Hybrid Matching."""
 
-    def __init__(self,
-                 *args,
-                 num_query_one2one: int = 900,
-                 k_one2many: int = 2,
-                 **kwargs) -> None:
+    def __init__(
+        self, *args, num_query_one2one: int = 900, k_one2many: int = 2, **kwargs
+    ) -> None:
         self.num_query_one2one = num_query_one2one
         self.k_one2many = k_one2many
         super().__init__(*args, **kwargs)
@@ -31,7 +29,7 @@ class HybridDINOHead(DINOHead):
         batch_gt_instances: InstanceList,
         batch_img_metas: List[dict],
         dn_meta: Dict[str, int],
-        batch_gt_instances_ignore: OptInstanceList = None
+        batch_gt_instances_ignore: OptInstanceList = None,
     ) -> Dict[str, Tensor]:
         """Loss function.
 
@@ -69,22 +67,23 @@ class HybridDINOHead(DINOHead):
         """
         # train: num_denoising_queries + num_query_one2one
         # + num_query_one2many
-        num_query_one2one = dn_meta[
-            'num_denoising_queries'] + self.num_query_one2one
-        outputs_classes_one2one = \
-            all_layers_cls_scores[:, :, 0: num_query_one2one, :]
-        outputs_coords_one2one = \
-            all_layers_bbox_preds[:, :, 0: num_query_one2one, :]
+        num_query_one2one = dn_meta["num_denoising_queries"] + self.num_query_one2one
+        outputs_classes_one2one = all_layers_cls_scores[:, :, 0:num_query_one2one, :]
+        outputs_coords_one2one = all_layers_bbox_preds[:, :, 0:num_query_one2one, :]
         # hybrid-matching part
-        outputs_classes_one2many = \
-            all_layers_cls_scores[:, :, num_query_one2one:, :]
-        outputs_coords_one2many = \
-            all_layers_bbox_preds[:, :, num_query_one2one:, :]
+        outputs_classes_one2many = all_layers_cls_scores[:, :, num_query_one2one:, :]
+        outputs_coords_one2many = all_layers_bbox_preds[:, :, num_query_one2one:, :]
 
         loss_dict = super(HybridDINOHead, self).loss_by_feat(
-            outputs_classes_one2one, outputs_coords_one2one, enc_cls_scores,
-            enc_bbox_preds, batch_gt_instances, batch_img_metas, dn_meta,
-            batch_gt_instances_ignore)
+            outputs_classes_one2one,
+            outputs_coords_one2one,
+            enc_cls_scores,
+            enc_bbox_preds,
+            batch_gt_instances,
+            batch_img_metas,
+            dn_meta,
+            batch_gt_instances_ignore,
+        )
 
         o2m_batch_gt_instances = []
         for gt_instance in batch_gt_instances:
@@ -98,15 +97,16 @@ class HybridDINOHead(DINOHead):
             outputs_classes_one2many,
             outputs_coords_one2many,
             batch_gt_instances=o2m_batch_gt_instances,
-            batch_img_metas=batch_img_metas)
+            batch_img_metas=batch_img_metas,
+        )
 
-        loss_dict['loss_cls_o2m'] = losses_cls_o2m[-1]
-        loss_dict['loss_bbox_o2m'] = losses_bbox_o2m[-1]
-        loss_dict['loss_iou_o2m'] = losses_iou_o2m[-1]
-        for num_dec_layer, (loss_cls_i, loss_bbox_i, loss_iou_i) in \
-                enumerate(zip(losses_cls_o2m[:-1], losses_bbox_o2m[:-1],
-                              losses_iou_o2m[:-1])):
-            loss_dict[f'd{num_dec_layer}.loss_cls_o2m'] = loss_cls_i
-            loss_dict[f'd{num_dec_layer}.loss_bbox_o2m'] = loss_bbox_i
-            loss_dict[f'd{num_dec_layer}.loss_iou_o2m'] = loss_iou_i
+        loss_dict["loss_cls_o2m"] = losses_cls_o2m[-1]
+        loss_dict["loss_bbox_o2m"] = losses_bbox_o2m[-1]
+        loss_dict["loss_iou_o2m"] = losses_iou_o2m[-1]
+        for num_dec_layer, (loss_cls_i, loss_bbox_i, loss_iou_i) in enumerate(
+            zip(losses_cls_o2m[:-1], losses_bbox_o2m[:-1], losses_iou_o2m[:-1])
+        ):
+            loss_dict[f"d{num_dec_layer}.loss_cls_o2m"] = loss_cls_i
+            loss_dict[f"d{num_dec_layer}.loss_bbox_o2m"] = loss_bbox_i
+            loss_dict[f"d{num_dec_layer}.loss_iou_o2m"] = loss_iou_i
         return loss_dict

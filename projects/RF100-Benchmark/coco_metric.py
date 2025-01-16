@@ -42,26 +42,28 @@ class RF100CocoMetric(CocoMetric):
         tmp_dir = None
         if self.outfile_prefix is None:
             tmp_dir = tempfile.TemporaryDirectory()
-            outfile_prefix = osp.join(tmp_dir.name, 'results')
+            outfile_prefix = osp.join(tmp_dir.name, "results")
         else:
             outfile_prefix = self.outfile_prefix
 
         if self._coco_api is None:
             # use converted gt json file to initialize coco api
-            logger.info('Converting ground truth to coco format...')
+            logger.info("Converting ground truth to coco format...")
             coco_json_path = self.gt_to_coco_json(
-                gt_dicts=gts, outfile_prefix=outfile_prefix)
+                gt_dicts=gts, outfile_prefix=outfile_prefix
+            )
             self._coco_api = COCO(coco_json_path)
 
         # handle lazy init
         if self.cat_ids is None:
             self.cat_ids = self._coco_api.get_cat_ids(
-                cat_names=self.dataset_meta['classes'])
+                cat_names=self.dataset_meta["classes"]
+            )
 
             # ----------------------------------
             # We only change this
-            if len(self.cat_ids) != len(self.dataset_meta['classes']):
-                sup_id = self._coco_api.get_cat_ids(sup_names=['none'])
+            if len(self.cat_ids) != len(self.dataset_meta["classes"]):
+                sup_id = self._coco_api.get_cat_ids(sup_names=["none"])
                 self.cat_ids = [x for x in self.cat_ids if x not in sup_id]
             # ----------------------------------
 
@@ -73,33 +75,33 @@ class RF100CocoMetric(CocoMetric):
 
         eval_results = OrderedDict()
         if self.format_only:
-            logger.info('results are saved in '
-                        f'{osp.dirname(outfile_prefix)}')
+            logger.info("results are saved in " f"{osp.dirname(outfile_prefix)}")
             return eval_results
 
         for metric in self.metrics:
-            logger.info(f'Evaluating {metric}...')
+            logger.info(f"Evaluating {metric}...")
 
             # TODO: May refactor fast_eval_recall to an independent metric?
             # fast eval recall
-            if metric == 'proposal_fast':
+            if metric == "proposal_fast":
                 ar = self.fast_eval_recall(
-                    preds, self.proposal_nums, self.iou_thrs, logger=logger)
+                    preds, self.proposal_nums, self.iou_thrs, logger=logger
+                )
                 log_msg = []
                 for i, num in enumerate(self.proposal_nums):
-                    eval_results[f'AR@{num}'] = ar[i]
-                    log_msg.append(f'\nAR@{num}\t{ar[i]:.4f}')
-                log_msg = ''.join(log_msg)
+                    eval_results[f"AR@{num}"] = ar[i]
+                    log_msg.append(f"\nAR@{num}\t{ar[i]:.4f}")
+                log_msg = "".join(log_msg)
                 logger.info(log_msg)
                 continue
 
             # evaluate proposal, bbox and segm
-            iou_type = 'bbox' if metric == 'proposal' else metric
+            iou_type = "bbox" if metric == "proposal" else metric
             if metric not in result_files:
-                raise KeyError(f'{metric} is not in results')
+                raise KeyError(f"{metric} is not in results")
             try:
                 predictions = load(result_files[metric])
-                if iou_type == 'segm':
+                if iou_type == "segm":
                     # Refer to https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/coco.py#L331  # noqa
                     # When evaluating mask AP, if the results contain bbox,
                     # cocoapi will use the box area instead of the mask area
@@ -107,12 +109,11 @@ class RF100CocoMetric(CocoMetric):
                     # is not affected, this leads to different
                     # small/medium/large mask AP results.
                     for x in predictions:
-                        x.pop('bbox')
+                        x.pop("bbox")
                 coco_dt = self._coco_api.loadRes(predictions)
 
             except IndexError:
-                logger.error(
-                    'The testing results of the whole dataset is empty.')
+                logger.error("The testing results of the whole dataset is empty.")
                 break
 
             coco_eval = COCOeval(self._coco_api, coco_dt, iou_type)
@@ -124,40 +125,42 @@ class RF100CocoMetric(CocoMetric):
 
             # mapping of cocoEval.stats
             coco_metric_names = {
-                'mAP': 0,
-                'mAP_50': 1,
-                'mAP_75': 2,
-                'mAP_s': 3,
-                'mAP_m': 4,
-                'mAP_l': 5,
-                'AR@100': 6,
-                'AR@300': 7,
-                'AR@1000': 8,
-                'AR_s@1000': 9,
-                'AR_m@1000': 10,
-                'AR_l@1000': 11
+                "mAP": 0,
+                "mAP_50": 1,
+                "mAP_75": 2,
+                "mAP_s": 3,
+                "mAP_m": 4,
+                "mAP_l": 5,
+                "AR@100": 6,
+                "AR@300": 7,
+                "AR@1000": 8,
+                "AR_s@1000": 9,
+                "AR_m@1000": 10,
+                "AR_l@1000": 11,
             }
             metric_items = self.metric_items
             if metric_items is not None:
                 for metric_item in metric_items:
                     if metric_item not in coco_metric_names:
-                        raise KeyError(
-                            f'metric item "{metric_item}" is not supported')
+                        raise KeyError(f'metric item "{metric_item}" is not supported')
 
-            if metric == 'proposal':
+            if metric == "proposal":
                 coco_eval.params.useCats = 0
                 coco_eval.evaluate()
                 coco_eval.accumulate()
                 coco_eval.summarize()
                 if metric_items is None:
                     metric_items = [
-                        'AR@100', 'AR@300', 'AR@1000', 'AR_s@1000',
-                        'AR_m@1000', 'AR_l@1000'
+                        "AR@100",
+                        "AR@300",
+                        "AR@1000",
+                        "AR_s@1000",
+                        "AR_m@1000",
+                        "AR_l@1000",
                     ]
 
                 for item in metric_items:
-                    val = float(
-                        f'{coco_eval.stats[coco_metric_names[item]]:.3f}')
+                    val = float(f"{coco_eval.stats[coco_metric_names[item]]:.3f}")
                     eval_results[item] = val
             else:
                 coco_eval.evaluate()
@@ -166,7 +169,7 @@ class RF100CocoMetric(CocoMetric):
                 if self.classwise:  # Compute per-category AP
                     # Compute per-category AP
                     # from https://github.com/facebookresearch/detectron2/
-                    precisions = coco_eval.eval['precision']
+                    precisions = coco_eval.eval["precision"]
                     # precision: (iou, recall, cls, area range, max dets)
                     assert len(self.cat_ids) == precisions.shape[2]
 
@@ -181,9 +184,9 @@ class RF100CocoMetric(CocoMetric):
                         if precision.size:
                             ap = np.mean(precision)
                         else:
-                            ap = float('nan')
+                            ap = float("nan")
                         t.append(f'{nm["name"]}')
-                        t.append(f'{round(ap, 3)}')
+                        t.append(f"{round(ap, 3)}")
                         eval_results[f'{nm["name"]}_precision'] = round(ap, 3)
 
                         # indexes of IoU  @50 and @75
@@ -193,8 +196,8 @@ class RF100CocoMetric(CocoMetric):
                             if precision.size:
                                 ap = np.mean(precision)
                             else:
-                                ap = float('nan')
-                            t.append(f'{round(ap, 3)}')
+                                ap = float("nan")
+                            t.append(f"{round(ap, 3)}")
 
                         # indexes of area of small, median and large
                         for area in [1, 2, 3]:
@@ -203,40 +206,50 @@ class RF100CocoMetric(CocoMetric):
                             if precision.size:
                                 ap = np.mean(precision)
                             else:
-                                ap = float('nan')
-                            t.append(f'{round(ap, 3)}')
+                                ap = float("nan")
+                            t.append(f"{round(ap, 3)}")
                         results_per_category.append(tuple(t))
 
                     num_columns = len(results_per_category[0])
-                    results_flatten = list(
-                        itertools.chain(*results_per_category))
+                    results_flatten = list(itertools.chain(*results_per_category))
                     headers = [
-                        'category', 'mAP', 'mAP_50', 'mAP_75', 'mAP_s',
-                        'mAP_m', 'mAP_l'
+                        "category",
+                        "mAP",
+                        "mAP_50",
+                        "mAP_75",
+                        "mAP_s",
+                        "mAP_m",
+                        "mAP_l",
                     ]
-                    results_2d = itertools.zip_longest(*[
-                        results_flatten[i::num_columns]
-                        for i in range(num_columns)
-                    ])
+                    results_2d = itertools.zip_longest(
+                        *[results_flatten[i::num_columns] for i in range(num_columns)]
+                    )
                     table_data = [headers]
                     table_data += [result for result in results_2d]
                     table = AsciiTable(table_data)
-                    logger.info('\n' + table.table)
+                    logger.info("\n" + table.table)
 
                 if metric_items is None:
                     metric_items = [
-                        'mAP', 'mAP_50', 'mAP_75', 'mAP_s', 'mAP_m', 'mAP_l'
+                        "mAP",
+                        "mAP_50",
+                        "mAP_75",
+                        "mAP_s",
+                        "mAP_m",
+                        "mAP_l",
                     ]
 
                 for metric_item in metric_items:
-                    key = f'{metric}_{metric_item}'
+                    key = f"{metric}_{metric_item}"
                     val = coco_eval.stats[coco_metric_names[metric_item]]
-                    eval_results[key] = float(f'{round(val, 3)}')
+                    eval_results[key] = float(f"{round(val, 3)}")
 
                 ap = coco_eval.stats[:6]
-                logger.info(f'{metric}_mAP_copypaste: {ap[0]:.3f} '
-                            f'{ap[1]:.3f} {ap[2]:.3f} {ap[3]:.3f} '
-                            f'{ap[4]:.3f} {ap[5]:.3f}')
+                logger.info(
+                    f"{metric}_mAP_copypaste: {ap[0]:.3f} "
+                    f"{ap[1]:.3f} {ap[2]:.3f} {ap[3]:.3f} "
+                    f"{ap[4]:.3f} {ap[5]:.3f}"
+                )
 
         if tmp_dir is not None:
             tmp_dir.cleanup()

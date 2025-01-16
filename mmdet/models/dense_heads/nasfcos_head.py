@@ -48,41 +48,35 @@ class NASFCOSHead(FCOSHead):
             dict], opitonal): Initialization config dict.
     """  # noqa: E501
 
-    def __init__(self,
-                 *args,
-                 init_cfg: OptMultiConfig = None,
-                 **kwargs) -> None:
+    def __init__(self, *args, init_cfg: OptMultiConfig = None, **kwargs) -> None:
         if init_cfg is None:
             init_cfg = [
-                dict(type='Caffe2Xavier', layer=['ConvModule', 'Conv2d']),
+                dict(type="Caffe2Xavier", layer=["ConvModule", "Conv2d"]),
                 dict(
-                    type='Normal',
+                    type="Normal",
                     std=0.01,
                     override=[
-                        dict(name='conv_reg'),
-                        dict(name='conv_centerness'),
-                        dict(
-                            name='conv_cls',
-                            type='Normal',
-                            std=0.01,
-                            bias_prob=0.01)
-                    ]),
+                        dict(name="conv_reg"),
+                        dict(name="conv_centerness"),
+                        dict(name="conv_cls", type="Normal", std=0.01, bias_prob=0.01),
+                    ],
+                ),
             ]
         super().__init__(*args, init_cfg=init_cfg, **kwargs)
 
     def _init_layers(self) -> None:
         """Initialize layers of the head."""
         dconv3x3_config = dict(
-            type='DCNv2',
-            kernel_size=3,
-            use_bias=True,
-            deform_groups=2,
-            padding=1)
-        conv3x3_config = dict(type='Conv', kernel_size=3, padding=1)
-        conv1x1_config = dict(type='Conv', kernel_size=1)
+            type="DCNv2", kernel_size=3, use_bias=True, deform_groups=2, padding=1
+        )
+        conv3x3_config = dict(type="Conv", kernel_size=3, padding=1)
+        conv1x1_config = dict(type="Conv", kernel_size=1)
 
         self.arch_config = [
-            dconv3x3_config, conv3x3_config, dconv3x3_config, conv1x1_config
+            dconv3x3_config,
+            conv3x3_config,
+            dconv3x3_config,
+            conv1x1_config,
         ]
         self.cls_convs = nn.ModuleList()
         self.reg_convs = nn.ModuleList()
@@ -90,9 +84,9 @@ class NASFCOSHead(FCOSHead):
             op = copy.deepcopy(op_)
             chn = self.in_channels if i == 0 else self.feat_channels
             assert isinstance(op, dict)
-            use_bias = op.pop('use_bias', False)
-            padding = op.pop('padding', 0)
-            kernel_size = op.pop('kernel_size')
+            use_bias = op.pop("use_bias", False)
+            padding = op.pop("padding", 0)
+            kernel_size = op.pop("kernel_size")
             module = ConvModule(
                 chn,
                 self.feat_channels,
@@ -101,13 +95,15 @@ class NASFCOSHead(FCOSHead):
                 padding=padding,
                 norm_cfg=self.norm_cfg,
                 bias=use_bias,
-                conv_cfg=op)
+                conv_cfg=op,
+            )
 
             self.cls_convs.append(copy.deepcopy(module))
             self.reg_convs.append(copy.deepcopy(module))
 
         self.conv_cls = nn.Conv2d(
-            self.feat_channels, self.cls_out_channels, 3, padding=1)
+            self.feat_channels, self.cls_out_channels, 3, padding=1
+        )
         self.conv_reg = nn.Conv2d(self.feat_channels, 4, 3, padding=1)
         self.conv_centerness = nn.Conv2d(self.feat_channels, 1, 3, padding=1)
 

@@ -7,14 +7,23 @@
 from mmengine.config import read_base
 
 with read_base():
-    from .ssj_270_coco_instance import *
+    from .ssj_270_coco_instance import (
+        CocoDataset,
+        LoadAnnotations,
+        LoadImageFromFile,
+        PackDetInputs,
+        Pad,
+        RandomFlip,
+        RandomResize,
+        train_dataloader,
+    )
 
 from mmdet.datasets import MultiImageMixDataset
 from mmdet.datasets.transforms import CopyPaste
 
 # dataset settings
 dataset_type = CocoDataset
-data_root = 'data/coco/'
+data_root = "data/coco/"
 image_size = (1024, 1024)
 # Example to use different file client
 # Method 1: simply set the data root and let the file I/O module
@@ -36,25 +45,19 @@ backend_args = None
 load_pipeline = [
     dict(type=LoadImageFromFile, backend_args=backend_args),
     dict(type=LoadAnnotations, with_bbox=True, with_mask=True),
+    dict(type=RandomResize, scale=image_size, ratio_range=(0.8, 1.25), keep_ratio=True),
     dict(
-        type=RandomResize,
-        scale=image_size,
-        ratio_range=(0.8, 1.25),
-        keep_ratio=True),
-    dict(
-        type='RandomCrop',
-        crop_type='absolute_range',
+        type="RandomCrop",
+        crop_type="absolute_range",
         crop_size=image_size,
         recompute_bbox=True,
-        allow_negative_crop=True),
-    dict(type='FilterAnnotations', min_gt_bbox_wh=(1e-2, 1e-2)),
+        allow_negative_crop=True,
+    ),
+    dict(type="FilterAnnotations", min_gt_bbox_wh=(1e-2, 1e-2)),
     dict(type=RandomFlip, prob=0.5),
     dict(type=Pad, size=image_size),
 ]
-train_pipeline = [
-    dict(type=CopyPaste, max_num_pasted=100),
-    dict(type=PackDetInputs)
-]
+train_pipeline = [dict(type=CopyPaste, max_num_pasted=100), dict(type=PackDetInputs)]
 
 train_dataloader.update(
     dict(
@@ -62,9 +65,12 @@ train_dataloader.update(
         dataset=dict(
             type=dataset_type,
             data_root=data_root,
-            ann_file='annotations/instances_train2017.json',
-            data_prefix=dict(img='train2017/'),
+            ann_file="annotations/instances_train2017.json",
+            data_prefix=dict(img="train2017/"),
             filter_cfg=dict(filter_empty_gt=True, min_size=32),
             pipeline=load_pipeline,
-            backend_args=backend_args),
-        pipeline=train_pipeline))
+            backend_args=backend_args,
+        ),
+        pipeline=train_pipeline,
+    )
+)

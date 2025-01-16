@@ -19,12 +19,12 @@ class BaseTracker(metaclass=ABCMeta):
              Defaults to 10.
     """
 
-    def __init__(self,
-                 momentums: Optional[dict] = None,
-                 num_frames_retain: int = 10) -> None:
+    def __init__(
+        self, momentums: Optional[dict] = None, num_frames_retain: int = 10
+    ) -> None:
         super().__init__()
         if momentums is not None:
-            assert isinstance(momentums, dict), 'momentums must be a dict'
+            assert isinstance(momentums, dict), "momentums must be a dict"
         self.momentums = momentums
         self.num_frames_retain = num_frames_retain
 
@@ -48,7 +48,7 @@ class BaseTracker(metaclass=ABCMeta):
     @property
     def with_reid(self) -> bool:
         """bool: whether the framework has a reid model"""
-        return hasattr(self, 'reid') and self.reid is not None
+        return hasattr(self, "reid") and self.reid is not None
 
     def update(self, **kwargs) -> None:
         """Update the tracker.
@@ -62,23 +62,22 @@ class BaseTracker(metaclass=ABCMeta):
         rm_items = [k for k in kwargs.keys() if k not in memo_items]
         for item in rm_items:
             kwargs.pop(item)
-        if not hasattr(self, 'memo_items'):
+        if not hasattr(self, "memo_items"):
             self.memo_items = memo_items
         else:
             assert memo_items == self.memo_items
 
-        assert 'ids' in memo_items
-        num_objs = len(kwargs['ids'])
-        id_indice = memo_items.index('ids')
-        assert 'frame_ids' in memo_items
-        frame_id = int(kwargs['frame_ids'])
-        if isinstance(kwargs['frame_ids'], int):
-            kwargs['frame_ids'] = torch.tensor([kwargs['frame_ids']] *
-                                               num_objs)
+        assert "ids" in memo_items
+        num_objs = len(kwargs["ids"])
+        id_indice = memo_items.index("ids")
+        assert "frame_ids" in memo_items
+        frame_id = int(kwargs["frame_ids"])
+        if isinstance(kwargs["frame_ids"], int):
+            kwargs["frame_ids"] = torch.tensor([kwargs["frame_ids"]] * num_objs)
         # cur_frame_id = int(kwargs['frame_ids'][0])
         for k, v in kwargs.items():
             if len(v) != num_objs:
-                raise ValueError('kwargs value must both equal')
+                raise ValueError("kwargs value must both equal")
 
         for obj in zip(*kwargs.values()):
             id = int(obj[id_indice])
@@ -93,7 +92,7 @@ class BaseTracker(metaclass=ABCMeta):
         """Pop out invalid tracks."""
         invalid_ids = []
         for k, v in self.tracks.items():
-            if frame_id - v['frame_ids'][-1] >= self.num_frames_retain:
+            if frame_id - v["frame_ids"][-1] >= self.num_frames_retain:
                 invalid_ids.append(k)
         for invalid_id in invalid_ids:
             self.tracks.pop(invalid_id)
@@ -139,11 +138,13 @@ class BaseTracker(metaclass=ABCMeta):
             outs[k] = torch.cat(v, dim=0)
         return outs
 
-    def get(self,
-            item: str,
-            ids: Optional[list] = None,
-            num_samples: Optional[int] = None,
-            behavior: Optional[str] = None) -> torch.Tensor:
+    def get(
+        self,
+        item: str,
+        ids: Optional[list] = None,
+        num_samples: Optional[int] = None,
+        behavior: Optional[str] = None,
+    ) -> torch.Tensor:
         """Get the buffer of a specific item.
 
         Args:
@@ -167,7 +168,7 @@ class BaseTracker(metaclass=ABCMeta):
                 if num_samples is not None:
                     out = out[-num_samples:]
                     out = torch.cat(out, dim=0)
-                    if behavior == 'mean':
+                    if behavior == "mean":
                         out = out.mean(dim=0, keepdim=True)
                     elif behavior is None:
                         out = out[None]
@@ -181,13 +182,14 @@ class BaseTracker(metaclass=ABCMeta):
     @abstractmethod
     def track(self, *args, **kwargs):
         """Tracking forward function."""
-        pass
 
-    def crop_imgs(self,
-                  img: torch.Tensor,
-                  meta_info: dict,
-                  bboxes: torch.Tensor,
-                  rescale: bool = False) -> torch.Tensor:
+    def crop_imgs(
+        self,
+        img: torch.Tensor,
+        meta_info: dict,
+        bboxes: torch.Tensor,
+        rescale: bool = False,
+    ) -> torch.Tensor:
         """Crop the images according to some bounding boxes. Typically for re-
         identification sub-module.
 
@@ -204,12 +206,13 @@ class BaseTracker(metaclass=ABCMeta):
         Returns:
             Tensor: Image tensor of shape (T, C, H, W).
         """
-        h, w = meta_info['img_shape']
+        h, w = meta_info["img_shape"]
         img = img[:, :, :h, :w]
         if rescale:
-            factor_x, factor_y = meta_info['scale_factor']
-            bboxes[:, :4] *= torch.tensor(
-                [factor_x, factor_y, factor_x, factor_y]).to(bboxes.device)
+            factor_x, factor_y = meta_info["scale_factor"]
+            bboxes[:, :4] *= torch.tensor([factor_x, factor_y, factor_x, factor_y]).to(
+                bboxes.device
+            )
         bboxes[:, 0] = torch.clamp(bboxes[:, 0], min=0, max=w - 1)
         bboxes[:, 1] = torch.clamp(bboxes[:, 1], min=0, max=h - 1)
         bboxes[:, 2] = torch.clamp(bboxes[:, 2], min=1, max=w)
@@ -223,18 +226,19 @@ class BaseTracker(metaclass=ABCMeta):
             if y2 <= y1:
                 y2 = y1 + 1
             crop_img = img[:, :, y1:y2, x1:x2]
-            if self.reid.get('img_scale', False):
+            if self.reid.get("img_scale", False):
                 crop_img = F.interpolate(
                     crop_img,
-                    size=self.reid['img_scale'],
-                    mode='bilinear',
-                    align_corners=False)
+                    size=self.reid["img_scale"],
+                    mode="bilinear",
+                    align_corners=False,
+                )
             crop_imgs.append(crop_img)
 
         if len(crop_imgs) > 0:
             return torch.cat(crop_imgs, dim=0)
-        elif self.reid.get('img_scale', False):
-            _h, _w = self.reid['img_scale']
+        elif self.reid.get("img_scale", False):
+            _h, _w = self.reid["img_scale"]
             return img.new_zeros((0, 3, _h, _w))
         else:
             return img.new_zeros((0, 3, h, w))

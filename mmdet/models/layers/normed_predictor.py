@@ -7,10 +7,10 @@ from torch import Tensor
 
 from mmdet.registry import MODELS
 
-MODELS.register_module('Linear', module=nn.Linear)
+MODELS.register_module("Linear", module=nn.Linear)
 
 
-@MODELS.register_module(name='NormedLinear')
+@MODELS.register_module(name="NormedLinear")
 class NormedLinear(nn.Linear):
     """Normalized Linear Layer.
 
@@ -21,12 +21,14 @@ class NormedLinear(nn.Linear):
              keep numerical stability. Defaults to 1e-6.
     """
 
-    def __init__(self,
-                 *args,
-                 tempearture: float = 20,
-                 power: int = 1.0,
-                 eps: float = 1e-6,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        tempearture: float = 20,
+        power: int = 1.0,
+        eps: float = 1e-6,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.tempearture = tempearture
         self.power = power
@@ -42,14 +44,15 @@ class NormedLinear(nn.Linear):
     def forward(self, x: Tensor) -> Tensor:
         """Forward function for `NormedLinear`."""
         weight_ = self.weight / (
-            self.weight.norm(dim=1, keepdim=True).pow(self.power) + self.eps)
+            self.weight.norm(dim=1, keepdim=True).pow(self.power) + self.eps
+        )
         x_ = x / (x.norm(dim=1, keepdim=True).pow(self.power) + self.eps)
         x_ = x_ * self.tempearture
 
         return F.linear(x_, weight_, self.bias)
 
 
-@MODELS.register_module(name='NormedConv2d')
+@MODELS.register_module(name="NormedConv2d")
 class NormedConv2d(nn.Conv2d):
     """Normalized Conv2d Layer.
 
@@ -62,13 +65,15 @@ class NormedConv2d(nn.Conv2d):
              Defaults to False.
     """
 
-    def __init__(self,
-                 *args,
-                 tempearture: float = 20,
-                 power: int = 1.0,
-                 eps: float = 1e-6,
-                 norm_over_kernel: bool = False,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        tempearture: float = 20,
+        power: int = 1.0,
+        eps: float = 1e-6,
+        norm_over_kernel: bool = False,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.tempearture = tempearture
         self.power = power
@@ -79,20 +84,22 @@ class NormedConv2d(nn.Conv2d):
         """Forward function for `NormedConv2d`."""
         if not self.norm_over_kernel:
             weight_ = self.weight / (
-                self.weight.norm(dim=1, keepdim=True).pow(self.power) +
-                self.eps)
+                self.weight.norm(dim=1, keepdim=True).pow(self.power) + self.eps
+            )
         else:
             weight_ = self.weight / (
-                self.weight.view(self.weight.size(0), -1).norm(
-                    dim=1, keepdim=True).pow(self.power)[..., None, None] +
-                self.eps)
+                self.weight.view(self.weight.size(0), -1)
+                .norm(dim=1, keepdim=True)
+                .pow(self.power)[..., None, None]
+                + self.eps
+            )
         x_ = x / (x.norm(dim=1, keepdim=True).pow(self.power) + self.eps)
         x_ = x_ * self.tempearture
 
-        if hasattr(self, 'conv2d_forward'):
+        if hasattr(self, "conv2d_forward"):
             x_ = self.conv2d_forward(x_, weight_)
         else:
-            if digit_version(torch.__version__) >= digit_version('1.8'):
+            if digit_version(torch.__version__) >= digit_version("1.8"):
                 x_ = self._conv_forward(x_, weight_, self.bias)
             else:
                 x_ = self._conv_forward(x_, weight_)

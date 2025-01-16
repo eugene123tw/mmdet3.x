@@ -17,7 +17,6 @@ from mmdet.utils import ConfigType, InstanceList, MultiConfig
 
 @MODELS.register_module()
 class DeticRoIHead(CascadeRoIHead):
-
     def __init__(
         self,
         *,
@@ -41,8 +40,9 @@ class DeticRoIHead(CascadeRoIHead):
         self.mask_weight = mask_weight
         self.one_class_per_proposal = one_class_per_proposal
 
-    def init_mask_head(self, mask_roi_extractor: MultiConfig,
-                       mask_head: MultiConfig) -> None:
+    def init_mask_head(
+        self, mask_roi_extractor: MultiConfig, mask_head: MultiConfig
+    ) -> None:
         """Initialize mask head and mask roi extractor.
 
         Args:
@@ -59,9 +59,14 @@ class DeticRoIHead(CascadeRoIHead):
             self.share_roi_extractor = True
             self.mask_roi_extractor = self.bbox_roi_extractor
 
-    def _refine_roi(self, x: Tuple[Tensor], rois: Tensor,
-                    batch_img_metas: List[dict],
-                    num_proposals_per_img: Sequence[int], **kwargs) -> tuple:
+    def _refine_roi(
+        self,
+        x: Tuple[Tensor],
+        rois: Tensor,
+        batch_img_metas: List[dict],
+        num_proposals_per_img: Sequence[int],
+        **kwargs,
+    ) -> tuple:
         """Multi-stage refinement of RoI.
 
         Args:
@@ -83,12 +88,11 @@ class DeticRoIHead(CascadeRoIHead):
         # "ms" in variable names means multi-stage
         ms_scores = []
         for stage in range(self.num_stages):
-            bbox_results = self._bbox_forward(
-                stage=stage, x=x, rois=rois, **kwargs)
+            bbox_results = self._bbox_forward(stage=stage, x=x, rois=rois, **kwargs)
 
             # split batch bbox prediction back to each image
-            cls_scores = bbox_results['cls_score'].sigmoid()
-            bbox_preds = bbox_results['bbox_pred']
+            cls_scores = bbox_results["cls_score"].sigmoid()
+            bbox_preds = bbox_results["bbox_pred"]
 
             rois = rois.split(num_proposals_per_img, 0)
             cls_scores = cls_scores.split(num_proposals_per_img, 0)
@@ -104,11 +108,15 @@ class DeticRoIHead(CascadeRoIHead):
                         # Refactor `bbox_head.regress_by_class` to only accept
                         # box tensor without img_idx concatenated.
                         refined_bboxes = bbox_head.regress_by_class(
-                            rois[i][:, 1:], bbox_label, bbox_preds[i],
-                            batch_img_metas[i])
+                            rois[i][:, 1:],
+                            bbox_label,
+                            bbox_preds[i],
+                            batch_img_metas[i],
+                        )
                         refined_bboxes = get_box_tensor(refined_bboxes)
                         refined_rois = torch.cat(
-                            [rois[i][:, [0]], refined_bboxes], dim=1)
+                            [rois[i][:, [0]], refined_bboxes], dim=1
+                        )
                         refine_rois_list.append(refined_rois)
                 rois = torch.cat(refine_rois_list)
         # ms_scores aligned
@@ -119,13 +127,15 @@ class DeticRoIHead(CascadeRoIHead):
         ]  # aligned
         return rois, cls_scores, bbox_preds
 
-    def predict_bbox(self,
-                     x: Tuple[Tensor],
-                     batch_img_metas: List[dict],
-                     rpn_results_list: InstanceList,
-                     rcnn_test_cfg: ConfigType,
-                     rescale: bool = False,
-                     **kwargs) -> InstanceList:
+    def predict_bbox(
+        self,
+        x: Tuple[Tensor],
+        batch_img_metas: List[dict],
+        rpn_results_list: InstanceList,
+        rcnn_test_cfg: ConfigType,
+        rescale: bool = False,
+        **kwargs,
+    ) -> InstanceList:
         """Perform forward propagation of the bbox head and predict detection
         results on the features of the upstream network.
 
@@ -159,21 +169,24 @@ class DeticRoIHead(CascadeRoIHead):
             return empty_instances(
                 batch_img_metas,
                 rois.device,
-                task_type='bbox',
+                task_type="bbox",
                 box_type=self.bbox_head[-1].predict_box_type,
                 num_classes=self.bbox_head[-1].num_classes,
-                score_per_cls=rcnn_test_cfg is None)
+                score_per_cls=rcnn_test_cfg is None,
+            )
         # rois aligned
         rois, cls_scores, bbox_preds = self._refine_roi(
             x=x,
             rois=rois,
             batch_img_metas=batch_img_metas,
             num_proposals_per_img=num_proposals_per_img,
-            **kwargs)
+            **kwargs,
+        )
 
         # score reweighting in centernet2
-        cls_scores = [(s * ps[:, None])**0.5
-                      for s, ps in zip(cls_scores, proposal_scores)]
+        cls_scores = [
+            (s * ps[:, None]) ** 0.5 for s, ps in zip(cls_scores, proposal_scores)
+        ]
         # # for demo
         # cls_scores = [
         #     s * (s == s[:, :-1].max(dim=1)[0][:, None]).float()
@@ -187,7 +200,8 @@ class DeticRoIHead(CascadeRoIHead):
             bbox_preds=bbox_preds,
             batch_img_metas=batch_img_metas,
             rescale=rescale,
-            rcnn_test_cfg=rcnn_test_cfg)
+            rcnn_test_cfg=rcnn_test_cfg,
+        )
         return results_list
 
     def _mask_forward(self, x: Tuple[Tensor], rois: Tensor) -> dict:
@@ -205,15 +219,20 @@ class DeticRoIHead(CascadeRoIHead):
                 - `mask_preds` (Tensor): Mask prediction.
         """
         mask_feats = self.mask_roi_extractor(
-            x[:self.mask_roi_extractor.num_inputs], rois)
+            x[: self.mask_roi_extractor.num_inputs], rois
+        )
         # do not support caffe_c4 model anymore
         mask_preds = self.mask_head(mask_feats)
 
         mask_results = dict(mask_preds=mask_preds)
         return mask_results
 
-    def mask_loss(self, x, sampling_results: List[SamplingResult],
-                  batch_gt_instances: InstanceList) -> dict:
+    def mask_loss(
+        self,
+        x,
+        sampling_results: List[SamplingResult],
+        batch_gt_instances: InstanceList,
+    ) -> dict:
         """Run forward function and calculate loss for mask head in training.
 
         Args:
@@ -233,16 +252,21 @@ class DeticRoIHead(CascadeRoIHead):
         mask_results = self._mask_forward(x, pos_rois)
 
         mask_loss_and_target = self.mask_head.loss_and_target(
-            mask_preds=mask_results['mask_preds'],
+            mask_preds=mask_results["mask_preds"],
             sampling_results=sampling_results,
             batch_gt_instances=batch_gt_instances,
-            rcnn_train_cfg=self.train_cfg[-1])
+            rcnn_train_cfg=self.train_cfg[-1],
+        )
         mask_results.update(mask_loss_and_target)
 
         return mask_results
 
-    def loss(self, x: Tuple[Tensor], rpn_results_list: InstanceList,
-             batch_data_samples: SampleList) -> dict:
+    def loss(
+        self,
+        x: Tuple[Tensor],
+        rpn_results_list: InstanceList,
+        batch_data_samples: SampleList,
+    ) -> dict:
         """Perform forward propagation and loss calculation of the detection
         roi on the features of the upstream network.
 
@@ -259,8 +283,7 @@ class DeticRoIHead(CascadeRoIHead):
         """
         assert len(rpn_results_list) == len(batch_data_samples)
         outputs = unpack_gt_instances(batch_data_samples)
-        batch_gt_instances, batch_gt_instances_ignore, batch_img_metas \
-            = outputs
+        batch_gt_instances, batch_gt_instances_ignore, batch_img_metas = outputs
 
         num_imgs = len(batch_data_samples)
         image_labels = [x.gt_instances.labels for x in batch_data_samples]
@@ -270,7 +293,7 @@ class DeticRoIHead(CascadeRoIHead):
         for stage in range(self.num_stages):
             self.current_stage = stage
             stage_loss_weight = self.stage_loss_weights[stage]
-            if hasattr(batch_gt_instances[0], 'bboxes'):
+            if hasattr(batch_gt_instances[0], "bboxes"):
                 # assign gts and sample proposals
                 sampling_results = []
                 if self.with_bbox or self.with_mask:
@@ -280,70 +303,77 @@ class DeticRoIHead(CascadeRoIHead):
                     for i in range(num_imgs):
                         results = results_list[i]
                         # rename rpn_results.bboxes to rpn_results.priors
-                        results.priors = results.pop('bboxes')
+                        results.priors = results.pop("bboxes")
 
                         assign_result = bbox_assigner.assign(
-                            results, batch_gt_instances[i],
-                            batch_gt_instances_ignore[i])
+                            results, batch_gt_instances[i], batch_gt_instances_ignore[i]
+                        )
 
                         sampling_result = bbox_sampler.sample(
                             assign_result,
                             results,
                             batch_gt_instances[i],
-                            feats=[lvl_feat[i][None] for lvl_feat in x])
+                            feats=[lvl_feat[i][None] for lvl_feat in x],
+                        )
 
                         sampling_results.append(sampling_result)
 
                 # bbox head forward and loss
                 bbox_results = self.bbox_loss(stage, x, sampling_results)
 
-                for name, value in bbox_results['loss_bbox'].items():
-                    losses[f's{stage}.{name}'] = (
-                        value * stage_loss_weight if 'loss' in name else value)
-                losses[f's{stage}.image_loss'] = x[0].new_zeros([1])[0]
+                for name, value in bbox_results["loss_bbox"].items():
+                    losses[f"s{stage}.{name}"] = (
+                        value * stage_loss_weight if "loss" in name else value
+                    )
+                losses[f"s{stage}.image_loss"] = x[0].new_zeros([1])[0]
 
                 # mask head forward and loss
                 # D2 only forward stage.0
                 if self.with_mask and stage == 0:
-                    mask_results = self.mask_loss(x, sampling_results,
-                                                  batch_gt_instances)
-                    for name, value in mask_results['loss_mask'].items():
+                    mask_results = self.mask_loss(
+                        x, sampling_results, batch_gt_instances
+                    )
+                    for name, value in mask_results["loss_mask"].items():
                         losses[name] = (
-                            value *
-                            stage_loss_weight if 'loss' in name else value)
+                            value * stage_loss_weight if "loss" in name else value
+                        )
 
             else:
                 # get ws_num_props pred_instances for each image
                 sampling_results = [
-                    pred_instances[:self.ws_num_props]
+                    pred_instances[: self.ws_num_props]
                     for pred_instances in results_list
                 ]
                 for i, pred_instances in enumerate(sampling_results):
                     pred_instances.bboxes = pred_instances.bboxes.detach()
-                bbox_results = self.image_loss(stage, x, sampling_results,
-                                               image_labels)
-                losses[f's{stage}.image_loss'] = bbox_results['image_loss']
+                bbox_results = self.image_loss(stage, x, sampling_results, image_labels)
+                losses[f"s{stage}.image_loss"] = bbox_results["image_loss"]
 
-                for name in ['loss_cls', 'loss_bbox']:
-                    losses[f's{stage}.{name}'] = x[0].new_zeros([1])[0]
+                for name in ["loss_cls", "loss_bbox"]:
+                    losses[f"s{stage}.{name}"] = x[0].new_zeros([1])[0]
                 if stage == 0:
-                    losses['loss_mask'] = x[0].new_zeros([1])[0]
+                    losses["loss_mask"] = x[0].new_zeros([1])[0]
 
             # refine bboxes
             if stage < self.num_stages - 1:
                 bbox_head = self.bbox_head[stage]
                 with torch.no_grad():
                     results_list = bbox_head.refine_bboxes(
-                        bbox_results, batch_img_metas)
+                        bbox_results, batch_img_metas
+                    )
                     # Empty proposal
                     if results_list is None:
                         break
 
         return losses
 
-    def image_loss(self, stage: int, x: Tuple[Tensor],
-                   sampling_results: List[SamplingResult],
-                   image_labels) -> dict:
+    def image_loss(
+        self,
+        stage: int,
+        x: Tuple[Tensor],
+        sampling_results: List[SamplingResult],
+        image_labels,
+    ) -> dict:
         """Run forward function and calculate loss for box head in training.
 
         Args:
@@ -370,18 +400,21 @@ class DeticRoIHead(CascadeRoIHead):
         bbox_results.update(rois=rois)
 
         image_loss = bbox_head.image_label_losses(
-            cls_score=bbox_results['cls_score'],
+            cls_score=bbox_results["cls_score"],
             sampling_results=sampling_results,
-            image_labels=image_labels)
+            image_labels=image_labels,
+        )
         bbox_results.update(dict(image_loss=image_loss))
 
         return bbox_results
 
-    def predict_mask(self,
-                     x: Tuple[Tensor],
-                     batch_img_metas: List[dict],
-                     results_list: List[InstanceData],
-                     rescale: bool = False) -> List[InstanceData]:
+    def predict_mask(
+        self,
+        x: Tuple[Tensor],
+        batch_img_metas: List[dict],
+        results_list: List[InstanceData],
+        rescale: bool = False,
+    ) -> List[InstanceData]:
         """Perform forward propagation of the mask head and predict detection
         results on the features of the upstream network.
 
@@ -412,15 +445,16 @@ class DeticRoIHead(CascadeRoIHead):
             results_list = empty_instances(
                 batch_img_metas,
                 mask_rois.device,
-                task_type='mask',
+                task_type="mask",
                 instance_results=results_list,
-                mask_thr_binary=self.test_cfg.mask_thr_binary)
+                mask_thr_binary=self.test_cfg.mask_thr_binary,
+            )
             return results_list
 
         num_mask_rois_per_img = [len(res) for res in results_list]
         aug_masks = []
         mask_results = self._mask_forward(x, mask_rois)
-        mask_preds = mask_results['mask_preds']
+        mask_preds = mask_results["mask_preds"]
         # split batch mask prediction back to each image
         mask_preds = mask_preds.split(num_mask_rois_per_img, 0)
         aug_masks.append([m.sigmoid().detach() for m in mask_preds])
@@ -436,5 +470,6 @@ class DeticRoIHead(CascadeRoIHead):
             batch_img_metas=batch_img_metas,
             rcnn_test_cfg=self.test_cfg,
             rescale=rescale,
-            activate_map=True)
+            activate_map=True,
+        )
         return results_list

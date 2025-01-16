@@ -1,4 +1,4 @@
 local = dict(
-    type='LocalFileReader',
-    working_dir='local path',
+    type="LocalFileReader",
+    working_dir="local path",
 )

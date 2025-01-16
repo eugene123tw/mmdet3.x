@@ -7,6 +7,10 @@ repos:
     rev: 5.11.5
     hooks:
       - id: isort
+  - repo: https://github.com/pycqa/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
   - repo: https://github.com/pre-commit/mirrors-yapf
     rev: v0.32.0
     hooks:
@@ -48,3 +52,10 @@ repos:
       - id: check-algo-readme
       - id: check-copyright
         args: ["mmdet"]  # replace the dir_to_check with your expected directory to check
+  # Ruff
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.1.2"
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

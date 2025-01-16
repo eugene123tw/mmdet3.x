@@ -8,8 +8,13 @@ from numpy import ndarray
 from torch import Tensor
 
 from mmdet.registry import MODELS, TASK_UTILS
-from mmdet.utils import (ConfigType, InstanceList, MultiConfig, OptConfigType,
-                         OptInstanceList)
+from mmdet.utils import (
+    ConfigType,
+    InstanceList,
+    MultiConfig,
+    OptConfigType,
+    OptInstanceList,
+)
 from ..task_modules.prior_generators import MlvlPointGenerator
 from ..utils import multi_apply
 from .base_dense_head import BaseDenseHead
@@ -60,29 +65,26 @@ class AnchorFreeHead(BaseDenseHead):
         stacked_convs: int = 4,
         strides: StrideType = (4, 8, 16, 32, 64),
         dcn_on_last_conv: bool = False,
-        conv_bias: Union[bool, str] = 'auto',
+        conv_bias: Union[bool, str] = "auto",
         loss_cls: ConfigType = dict(
-            type='FocalLoss',
-            use_sigmoid=True,
-            gamma=2.0,
-            alpha=0.25,
-            loss_weight=1.0),
-        loss_bbox: ConfigType = dict(type='IoULoss', loss_weight=1.0),
-        bbox_coder: ConfigType = dict(type='DistancePointBBoxCoder'),
+            type="FocalLoss", use_sigmoid=True, gamma=2.0, alpha=0.25, loss_weight=1.0
+        ),
+        loss_bbox: ConfigType = dict(type="IoULoss", loss_weight=1.0),
+        bbox_coder: ConfigType = dict(type="DistancePointBBoxCoder"),
         conv_cfg: OptConfigType = None,
         norm_cfg: OptConfigType = None,
         train_cfg: OptConfigType = None,
         test_cfg: OptConfigType = None,
         init_cfg: MultiConfig = dict(
-            type='Normal',
-            layer='Conv2d',
+            type="Normal",
+            layer="Conv2d",
             std=0.01,
-            override=dict(
-                type='Normal', name='conv_cls', std=0.01, bias_prob=0.01))
+            override=dict(type="Normal", name="conv_cls", std=0.01, bias_prob=0.01),
+        ),
     ) -> None:
         super().__init__(init_cfg=init_cfg)
         self.num_classes = num_classes
-        self.use_sigmoid_cls = loss_cls.get('use_sigmoid', False)
+        self.use_sigmoid_cls = loss_cls.get("use_sigmoid", False)
         if self.use_sigmoid_cls:
             self.cls_out_channels = num_classes
         else:
@@ -92,7 +94,7 @@ class AnchorFreeHead(BaseDenseHead):
         self.stacked_convs = stacked_convs
         self.strides = strides
         self.dcn_on_last_conv = dcn_on_last_conv
-        assert conv_bias == 'auto' or isinstance(conv_bias, bool)
+        assert conv_bias == "auto" or isinstance(conv_bias, bool)
         self.conv_bias = conv_bias
         self.loss_cls = MODELS.build(loss_cls)
         self.loss_bbox = MODELS.build(loss_bbox)
@@ -124,7 +126,7 @@ class AnchorFreeHead(BaseDenseHead):
         for i in range(self.stacked_convs):
             chn = self.in_channels if i == 0 else self.feat_channels
             if self.dcn_on_last_conv and i == self.stacked_convs - 1:
-                conv_cfg = dict(type='DCNv2')
+                conv_cfg = dict(type="DCNv2")
             else:
                 conv_cfg = self.conv_cfg
             self.cls_convs.append(
@@ -136,7 +138,9 @@ class AnchorFreeHead(BaseDenseHead):
                     padding=1,
                     conv_cfg=conv_cfg,
                     norm_cfg=self.norm_cfg,
-                    bias=self.conv_bias))
+                    bias=self.conv_bias,
+                )
+            )
 
     def _init_reg_convs(self) -> None:
         """Initialize bbox regression conv layers of the head."""
@@ -144,7 +148,7 @@ class AnchorFreeHead(BaseDenseHead):
         for i in range(self.stacked_convs):
             chn = self.in_channels if i == 0 else self.feat_channels
             if self.dcn_on_last_conv and i == self.stacked_convs - 1:
-                conv_cfg = dict(type='DCNv2')
+                conv_cfg = dict(type="DCNv2")
             else:
                 conv_cfg = self.conv_cfg
             self.reg_convs.append(
@@ -156,55 +160,68 @@ class AnchorFreeHead(BaseDenseHead):
                     padding=1,
                     conv_cfg=conv_cfg,
                     norm_cfg=self.norm_cfg,
-                    bias=self.conv_bias))
+                    bias=self.conv_bias,
+                )
+            )
 
     def _init_predictor(self) -> None:
         """Initialize predictor layers of the head."""
         self.conv_cls = nn.Conv2d(
-            self.feat_channels, self.cls_out_channels, 3, padding=1)
+            self.feat_channels, self.cls_out_channels, 3, padding=1
+        )
         self.conv_reg = nn.Conv2d(self.feat_channels, 4, 3, padding=1)
 
-    def _load_from_state_dict(self, state_dict: dict, prefix: str,
-                              local_metadata: dict, strict: bool,
-                              missing_keys: Union[List[str], str],
-                              unexpected_keys: Union[List[str], str],
-                              error_msgs: Union[List[str], str]) -> None:
+    def _load_from_state_dict(
+        self,
+        state_dict: dict,
+        prefix: str,
+        local_metadata: dict,
+        strict: bool,
+        missing_keys: Union[List[str], str],
+        unexpected_keys: Union[List[str], str],
+        error_msgs: Union[List[str], str],
+    ) -> None:
         """Hack some keys of the model state dict so that can load checkpoints
         of previous version."""
-        version = local_metadata.get('version', None)
+        version = local_metadata.get("version", None)
         if version is None:
             # the key is different in early versions
             # for example, 'fcos_cls' become 'conv_cls' now
-            bbox_head_keys = [
-                k for k in state_dict.keys() if k.startswith(prefix)
-            ]
+            bbox_head_keys = [k for k in state_dict.keys() if k.startswith(prefix)]
             ori_predictor_keys = []
             new_predictor_keys = []
             # e.g. 'fcos_cls' or 'fcos_reg'
             for key in bbox_head_keys:
                 ori_predictor_keys.append(key)
-                key = key.split('.')
+                key = key.split(".")
                 if len(key) < 2:
                     conv_name = None
-                elif key[1].endswith('cls'):
-                    conv_name = 'conv_cls'
-                elif key[1].endswith('reg'):
-                    conv_name = 'conv_reg'
-                elif key[1].endswith('centerness'):
-                    conv_name = 'conv_centerness'
+                elif key[1].endswith("cls"):
+                    conv_name = "conv_cls"
+                elif key[1].endswith("reg"):
+                    conv_name = "conv_reg"
+                elif key[1].endswith("centerness"):
+                    conv_name = "conv_centerness"
                 else:
                     conv_name = None
                 if conv_name is not None:
                     key[1] = conv_name
-                    new_predictor_keys.append('.'.join(key))
+                    new_predictor_keys.append(".".join(key))
                 else:
                     ori_predictor_keys.pop(-1)
             for i in range(len(new_predictor_keys)):
                 state_dict[new_predictor_keys[i]] = state_dict.pop(
-                    ori_predictor_keys[i])
-        super()._load_from_state_dict(state_dict, prefix, local_metadata,
-                                      strict, missing_keys, unexpected_keys,
-                                      error_msgs)
+                    ori_predictor_keys[i]
+                )
+        super()._load_from_state_dict(
+            state_dict,
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
 
     def forward(self, x: Tuple[Tensor]) -> Tuple[List[Tensor], List[Tensor]]:
         """Forward features from the upstream network.
@@ -249,12 +266,13 @@ class AnchorFreeHead(BaseDenseHead):
 
     @abstractmethod
     def loss_by_feat(
-            self,
-            cls_scores: List[Tensor],
-            bbox_preds: List[Tensor],
-            batch_gt_instances: InstanceList,
-            batch_img_metas: List[dict],
-            batch_gt_instances_ignore: OptInstanceList = None) -> dict:
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+        batch_gt_instances_ignore: OptInstanceList = None,
+    ) -> dict:
         """Calculate the loss based on the features extracted by the detection
         head.
 
@@ -279,8 +297,9 @@ class AnchorFreeHead(BaseDenseHead):
         raise NotImplementedError
 
     @abstractmethod
-    def get_targets(self, points: List[Tensor],
-                    batch_gt_instances: InstanceList) -> Any:
+    def get_targets(
+        self, points: List[Tensor], batch_gt_instances: InstanceList
+    ) -> Any:
         """Compute regression, classification and centerness targets for points
         in multiple images.
 
@@ -294,10 +313,12 @@ class AnchorFreeHead(BaseDenseHead):
         raise NotImplementedError
 
     # TODO refactor aug_test
-    def aug_test(self,
-                 aug_batch_feats: List[Tensor],
-                 aug_batch_img_metas: List[List[Tensor]],
-                 rescale: bool = False) -> List[ndarray]:
+    def aug_test(
+        self,
+        aug_batch_feats: List[Tensor],
+        aug_batch_img_metas: List[List[Tensor]],
+        rescale: bool = False,
+    ) -> List[ndarray]:
         """Test function with test time augmentation.
 
         Args:
@@ -314,4 +335,5 @@ class AnchorFreeHead(BaseDenseHead):
             list[ndarray]: bbox results of each class
         """
         return self.aug_test_bboxes(
-            aug_batch_feats, aug_batch_img_metas, rescale=rescale)
+            aug_batch_feats, aug_batch_img_metas, rescale=rescale
+        )

@@ -43,24 +43,26 @@ class SORTTracker(BaseTracker):
             a track. Defaults to 3.
     """
 
-    def __init__(self,
-                 motion: Optional[dict] = None,
-                 obj_score_thr: float = 0.3,
-                 reid: dict = dict(
-                     num_samples=10,
-                     img_scale=(256, 128),
-                     img_norm_cfg=None,
-                     match_score_thr=2.0),
-                 match_iou_thr: float = 0.7,
-                 num_tentatives: int = 3,
-                 **kwargs):
+    def __init__(
+        self,
+        motion: Optional[dict] = None,
+        obj_score_thr: float = 0.3,
+        reid: dict = dict(
+            num_samples=10, img_scale=(256, 128), img_norm_cfg=None, match_score_thr=2.0
+        ),
+        match_iou_thr: float = 0.7,
+        num_tentatives: int = 3,
+        **kwargs,
+    ):
         if motmetrics is None:
-            raise RuntimeError('motmetrics is not installed,\
-                 please install it by: pip install motmetrics')
+            raise RuntimeError(
+                "motmetrics is not installed,\
+                 please install it by: pip install motmetrics"
+            )
         super().__init__(**kwargs)
         if motion is not None:
             self.motion = TASK_UTILS.build(motion)
-            assert self.motion is not None, 'SORT/Deep SORT need KalmanFilter'
+            assert self.motion is not None, "SORT/Deep SORT need KalmanFilter"
         self.obj_score_thr = obj_score_thr
         self.reid = reid
         self.match_iou_thr = match_iou_thr
@@ -79,41 +81,43 @@ class SORTTracker(BaseTracker):
         bbox = bbox_xyxy_to_cxcyah(self.tracks[id].bboxes[-1])  # size = (1, 4)
         assert bbox.ndim == 2 and bbox.shape[0] == 1
         bbox = bbox.squeeze(0).cpu().numpy()
-        self.tracks[id].mean, self.tracks[id].covariance = self.kf.initiate(
-            bbox)
+        self.tracks[id].mean, self.tracks[id].covariance = self.kf.initiate(bbox)
 
     def update_track(self, id: int, obj: Tuple[Tensor]) -> None:
         """Update a track."""
         super().update_track(id, obj)
         if self.tracks[id].tentative:
-            if len(self.tracks[id]['bboxes']) >= self.num_tentatives:
+            if len(self.tracks[id]["bboxes"]) >= self.num_tentatives:
                 self.tracks[id].tentative = False
         bbox = bbox_xyxy_to_cxcyah(self.tracks[id].bboxes[-1])  # size = (1, 4)
         assert bbox.ndim == 2 and bbox.shape[0] == 1
         bbox = bbox.squeeze(0).cpu().numpy()
         self.tracks[id].mean, self.tracks[id].covariance = self.kf.update(
-            self.tracks[id].mean, self.tracks[id].covariance, bbox)
+            self.tracks[id].mean, self.tracks[id].covariance, bbox
+        )
 
     def pop_invalid_tracks(self, frame_id: int) -> None:
         """Pop out invalid tracks."""
         invalid_ids = []
         for k, v in self.tracks.items():
             # case1: disappeared frames >= self.num_frames_retrain
-            case1 = frame_id - v['frame_ids'][-1] >= self.num_frames_retain
+            case1 = frame_id - v["frame_ids"][-1] >= self.num_frames_retain
             # case2: tentative tracks but not matched in this frame
-            case2 = v.tentative and v['frame_ids'][-1] != frame_id
+            case2 = v.tentative and v["frame_ids"][-1] != frame_id
             if case1 or case2:
                 invalid_ids.append(k)
         for invalid_id in invalid_ids:
             self.tracks.pop(invalid_id)
 
-    def track(self,
-              model: torch.nn.Module,
-              img: Tensor,
-              data_sample: DetDataSample,
-              data_preprocessor: OptConfigType = None,
-              rescale: bool = False,
-              **kwargs) -> InstanceData:
+    def track(
+        self,
+        model: torch.nn.Module,
+        img: Tensor,
+        data_sample: DetDataSample,
+        data_preprocessor: OptConfigType = None,
+        rescale: bool = False,
+        **kwargs,
+    ) -> InstanceData:
         """Tracking forward function.
 
         Args:
@@ -141,20 +145,20 @@ class SORTTracker(BaseTracker):
         labels = data_sample.pred_instances.labels
         scores = data_sample.pred_instances.scores
 
-        frame_id = metainfo.get('frame_id', -1)
+        frame_id = metainfo.get("frame_id", -1)
         if frame_id == 0:
             self.reset()
-        if not hasattr(self, 'kf'):
+        if not hasattr(self, "kf"):
             self.kf = self.motion
 
         if self.with_reid:
-            if self.reid.get('img_norm_cfg', False):
+            if self.reid.get("img_norm_cfg", False):
                 img_norm_cfg = dict(
-                    mean=data_preprocessor['mean'],
-                    std=data_preprocessor['std'],
-                    to_bgr=data_preprocessor['rgb_to_bgr'])
-                reid_img = imrenormalize(img, img_norm_cfg,
-                                         self.reid['img_norm_cfg'])
+                    mean=data_preprocessor["mean"],
+                    std=data_preprocessor["std"],
+                    to_bgr=data_preprocessor["rgb_to_bgr"],
+                )
+                reid_img = imrenormalize(img, img_norm_cfg, self.reid["img_norm_cfg"])
             else:
                 reid_img = img.clone()
 
@@ -166,44 +170,42 @@ class SORTTracker(BaseTracker):
         if self.empty or bboxes.size(0) == 0:
             num_new_tracks = bboxes.size(0)
             ids = torch.arange(
-                self.num_tracks,
-                self.num_tracks + num_new_tracks,
-                dtype=torch.long).to(bboxes.device)
+                self.num_tracks, self.num_tracks + num_new_tracks, dtype=torch.long
+            ).to(bboxes.device)
             self.num_tracks += num_new_tracks
             if self.with_reid:
-                crops = self.crop_imgs(reid_img, metainfo, bboxes.clone(),
-                                       rescale)
+                crops = self.crop_imgs(reid_img, metainfo, bboxes.clone(), rescale)
                 if crops.size(0) > 0:
-                    embeds = model.reid(crops, mode='tensor')
+                    embeds = model.reid(crops, mode="tensor")
                 else:
                     embeds = crops.new_zeros((0, model.reid.head.out_channels))
         else:
-            ids = torch.full((bboxes.size(0), ), -1,
-                             dtype=torch.long).to(bboxes.device)
+            ids = torch.full((bboxes.size(0),), -1, dtype=torch.long).to(bboxes.device)
 
             # motion
-            self.tracks, costs = self.motion.track(self.tracks,
-                                                   bbox_xyxy_to_cxcyah(bboxes))
+            self.tracks, costs = self.motion.track(
+                self.tracks, bbox_xyxy_to_cxcyah(bboxes)
+            )
 
             active_ids = self.confirmed_ids
             if self.with_reid:
-                crops = self.crop_imgs(reid_img, metainfo, bboxes.clone(),
-                                       rescale)
-                embeds = model.reid(crops, mode='tensor')
+                crops = self.crop_imgs(reid_img, metainfo, bboxes.clone(), rescale)
+                embeds = model.reid(crops, mode="tensor")
 
                 # reid
                 if len(active_ids) > 0:
                     track_embeds = self.get(
-                        'embeds',
+                        "embeds",
                         active_ids,
-                        self.reid.get('num_samples', None),
-                        behavior='mean')
+                        self.reid.get("num_samples", None),
+                        behavior="mean",
+                    )
                     reid_dists = torch.cdist(track_embeds, embeds)
 
                     # support multi-class association
-                    track_labels = torch.tensor([
-                        self.tracks[id]['labels'][-1] for id in active_ids
-                    ]).to(bboxes.device)
+                    track_labels = torch.tensor(
+                        [self.tracks[id]["labels"][-1] for id in active_ids]
+                    ).to(bboxes.device)
                     cate_match = labels[None, :] == track_labels[:, None]
                     cate_cost = (1 - cate_match.int()) * 1e6
                     reid_dists = (reid_dists + cate_cost).cpu().numpy()
@@ -216,22 +218,23 @@ class SORTTracker(BaseTracker):
                         dist = reid_dists[r, c]
                         if not np.isfinite(dist):
                             continue
-                        if dist <= self.reid['match_score_thr']:
+                        if dist <= self.reid["match_score_thr"]:
                             ids[c] = active_ids[r]
 
             active_ids = [
-                id for id in self.ids if id not in ids
-                and self.tracks[id].frame_ids[-1] == frame_id - 1
+                id
+                for id in self.ids
+                if id not in ids and self.tracks[id].frame_ids[-1] == frame_id - 1
             ]
             if len(active_ids) > 0:
                 active_dets = torch.nonzero(ids == -1).squeeze(1)
-                track_bboxes = self.get('bboxes', active_ids)
+                track_bboxes = self.get("bboxes", active_ids)
                 ious = bbox_overlaps(track_bboxes, bboxes[active_dets])
 
                 # support multi-class association
-                track_labels = torch.tensor([
-                    self.tracks[id]['labels'][-1] for id in active_ids
-                ]).to(bboxes.device)
+                track_labels = torch.tensor(
+                    [self.tracks[id]["labels"][-1] for id in active_ids]
+                ).to(bboxes.device)
                 cate_match = labels[None, active_dets] == track_labels[:, None]
                 cate_cost = (1 - cate_match.int()) * 1e6
 
@@ -247,7 +250,8 @@ class SORTTracker(BaseTracker):
             ids[new_track_inds] = torch.arange(
                 self.num_tracks,
                 self.num_tracks + new_track_inds.sum(),
-                dtype=torch.long).to(bboxes.device)
+                dtype=torch.long,
+            ).to(bboxes.device)
             self.num_tracks += new_track_inds.sum()
 
         self.update(
@@ -256,7 +260,8 @@ class SORTTracker(BaseTracker):
             scores=scores,
             labels=labels,
             embeds=embeds if self.with_reid else None,
-            frame_ids=frame_id)
+            frame_ids=frame_id,
+        )
 
         # update pred_track_instances
         pred_track_instances = InstanceData()

@@ -18,7 +18,8 @@ class MDETRStyleRefCocoDataset(BaseDetDataset):
 
     def load_data_list(self) -> List[dict]:
         with get_local_path(
-                self.ann_file, backend_args=self.backend_args) as local_path:
+            self.ann_file, backend_args=self.backend_args
+        ) as local_path:
             coco = COCO(local_path)
 
         img_ids = coco.get_img_ids()
@@ -30,28 +31,27 @@ class MDETRStyleRefCocoDataset(BaseDetDataset):
             raw_ann_info = coco.load_anns(ann_ids)
 
             data_info = {}
-            img_path = osp.join(self.data_prefix['img'],
-                                raw_img_info['file_name'])
-            data_info['img_path'] = img_path
-            data_info['img_id'] = img_id
-            data_info['height'] = raw_img_info['height']
-            data_info['width'] = raw_img_info['width']
-            data_info['dataset_mode'] = raw_img_info['dataset_name']
+            img_path = osp.join(self.data_prefix["img"], raw_img_info["file_name"])
+            data_info["img_path"] = img_path
+            data_info["img_id"] = img_id
+            data_info["height"] = raw_img_info["height"]
+            data_info["width"] = raw_img_info["width"]
+            data_info["dataset_mode"] = raw_img_info["dataset_name"]
 
-            data_info['text'] = raw_img_info['caption']
-            data_info['custom_entities'] = False
-            data_info['tokens_positive'] = -1
+            data_info["text"] = raw_img_info["caption"]
+            data_info["custom_entities"] = False
+            data_info["tokens_positive"] = -1
 
             instances = []
             for i, ann in enumerate(raw_ann_info):
                 instance = {}
-                x1, y1, w, h = ann['bbox']
+                x1, y1, w, h = ann["bbox"]
                 bbox = [x1, y1, x1 + w, y1 + h]
-                instance['bbox'] = bbox
-                instance['bbox_label'] = ann['category_id']
-                instance['ignore_flag'] = 0
+                instance["bbox"] = bbox
+                instance["bbox_label"] = ann["category_id"]
+                instance["ignore_flag"] = 0
                 instances.append(instance)
 
-            data_info['instances'] = instances
+            data_info["instances"] = instances
             data_infos.append(data_info)
         return data_infos

@@ -12,8 +12,17 @@ from mmdet.apis import inference_detector, init_detector
 from mmdet.registry import VISUALIZERS
 from mmdet.utils import register_all_modules
 
-IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif',
-                  '.tiff', '.webp')
+IMG_EXTENSIONS = (
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".ppm",
+    ".bmp",
+    ".pgm",
+    ".tif",
+    ".tiff",
+    ".webp",
+)
 
 
 def get_file_list(source_root: str) -> [list, dict]:
@@ -27,7 +36,7 @@ def get_file_list(source_root: str) -> [list, dict]:
         source_type (dict): Source type: file or url or dir.
     """
     is_dir = os.path.isdir(source_root)
-    is_url = source_root.startswith(('http:/', 'https:/'))
+    is_url = source_root.startswith(("http:/", "https:/"))
     is_file = os.path.splitext(source_root)[-1].lower() in IMG_EXTENSIONS
 
     source_file_path_list = []
@@ -37,17 +46,16 @@ def get_file_list(source_root: str) -> [list, dict]:
             source_file_path_list.append(os.path.join(source_root, file))
     elif is_url:
         # when input source is url
-        filename = os.path.basename(
-            urllib.parse.unquote(source_root).split('?')[0])
+        filename = os.path.basename(urllib.parse.unquote(source_root).split("?")[0])
         file_save_path = os.path.join(os.getcwd(), filename)
-        print(f'Downloading source file to {file_save_path}')
+        print(f"Downloading source file to {file_save_path}")
         torch.hub.download_url_to_file(source_root, file_save_path)
         source_file_path_list = [file_save_path]
     elif is_file:
         # when input source is single image
         source_file_path_list = [source_root]
     else:
-        print('Cannot find image file.')
+        print("Cannot find image file.")
 
     source_type = dict(is_dir=is_dir, is_url=is_url, is_file=is_file)
 
@@ -56,22 +64,21 @@ def get_file_list(source_root: str) -> [list, dict]:
 
 def parse_args():
     parser = ArgumentParser()
+    parser.add_argument("img", help="Image path, include image file, dir and URL.")
+    parser.add_argument("config", help="Config file")
+    parser.add_argument("checkpoint", help="Checkpoint file")
+    parser.add_argument("--out-dir", default="./output", help="Path to output file")
+    parser.add_argument("--device", default="cuda:0", help="Device used for inference")
     parser.add_argument(
-        'img', help='Image path, include image file, dir and URL.')
-    parser.add_argument('config', help='Config file')
-    parser.add_argument('checkpoint', help='Checkpoint file')
+        "--show", action="store_true", help="Show the detection results"
+    )
     parser.add_argument(
-        '--out-dir', default='./output', help='Path to output file')
+        "--score-thr", type=float, default=0.3, help="Bbox score threshold"
+    )
     parser.add_argument(
-        '--device', default='cuda:0', help='Device used for inference')
-    parser.add_argument(
-        '--show', action='store_true', help='Show the detection results')
-    parser.add_argument(
-        '--score-thr', type=float, default=0.3, help='Bbox score threshold')
-    parser.add_argument(
-        '--dataset', type=str, help='dataset name to load the text embedding')
-    parser.add_argument(
-        '--class-name', nargs='+', type=str, help='custom class names')
+        "--dataset", type=str, help="dataset name to load the text embedding"
+    )
+    parser.add_argument("--class-name", nargs="+", type=str, help="custom class names")
     args = parser.parse_args()
     return args
 
@@ -94,8 +101,7 @@ def main():
 
     # get file list
     files, source_type = get_file_list(args.img)
-    from detic.utils import (get_class_names, get_text_embeddings,
-                             reset_cls_layer_weight)
+    from detic.utils import get_class_names, get_text_embeddings, reset_cls_layer_weight
 
     # class name embeddings
     if args.class_name:
@@ -103,8 +109,9 @@ def main():
     elif args.dataset:
         dataset_classes = get_class_names(args.dataset)
     embedding = get_text_embeddings(
-        dataset=args.dataset, custom_vocabulary=args.class_name)
-    visualizer.dataset_meta['classes'] = dataset_classes
+        dataset=args.dataset, custom_vocabulary=args.class_name
+    )
+    visualizer.dataset_meta["classes"] = dataset_classes
     reset_cls_layer_weight(model, embedding)
 
     # start detector inference
@@ -113,10 +120,10 @@ def main():
         result = inference_detector(model, file)
 
         img = mmcv.imread(file)
-        img = mmcv.imconvert(img, 'bgr', 'rgb')
+        img = mmcv.imconvert(img, "bgr", "rgb")
 
-        if source_type['is_dir']:
-            filename = os.path.relpath(file, args.img).replace('/', '_')
+        if source_type["is_dir"]:
+            filename = os.path.relpath(file, args.img).replace("/", "_")
         else:
             filename = os.path.basename(file)
         out_file = None if args.show else os.path.join(args.out_dir, filename)
@@ -131,12 +138,12 @@ def main():
             show=args.show,
             wait_time=0,
             out_file=out_file,
-            pred_score_thr=args.score_thr)
+            pred_score_thr=args.score_thr,
+        )
 
     if not args.show:
-        print_log(
-            f'\nResults have been saved at {os.path.abspath(args.out_dir)}')
+        print_log(f"\nResults have been saved at {os.path.abspath(args.out_dir)}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

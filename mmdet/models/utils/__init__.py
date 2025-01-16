@@ -1,9 +1,15 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-from .gaussian_target import (gather_feat, gaussian_radius,
-                              gen_gaussian_target, get_local_maximum,
-                              get_topk_from_heatmap, transpose_and_gather_feat)
+from .gaussian_target import (
+    gather_feat,
+    gaussian_radius,
+    gen_gaussian_target,
+    get_local_maximum,
+    get_topk_from_heatmap,
+    transpose_and_gather_feat,
+)
 from .image import imrenormalize
 from .make_divisible import make_divisible
+
 # Disable yapf because it conflicts with isort.
 # yapf: disable
 from .misc import (align_tensor, aligned_bilinear, center_of_mass,

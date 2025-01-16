@@ -29,8 +29,12 @@ class DynamicRoIHead(StandardRoIHead):
         # the beta history of the past `update_iter_interval` iterations
         self.beta_history = []
 
-    def loss(self, x: Tuple[Tensor], rpn_results_list: InstanceList,
-             batch_data_samples: SampleList) -> dict:
+    def loss(
+        self,
+        x: Tuple[Tensor],
+        rpn_results_list: InstanceList,
+        batch_data_samples: SampleList,
+    ) -> dict:
         """Forward function for training.
 
         Args:
@@ -55,19 +59,21 @@ class DynamicRoIHead(StandardRoIHead):
         for i in range(num_imgs):
             # rename rpn_results.bboxes to rpn_results.priors
             rpn_results = rpn_results_list[i]
-            rpn_results.priors = rpn_results.pop('bboxes')
+            rpn_results.priors = rpn_results.pop("bboxes")
 
             assign_result = self.bbox_assigner.assign(
-                rpn_results, batch_gt_instances[i],
-                batch_gt_instances_ignore[i])
+                rpn_results, batch_gt_instances[i], batch_gt_instances_ignore[i]
+            )
             sampling_result = self.bbox_sampler.sample(
                 assign_result,
                 rpn_results,
                 batch_gt_instances[i],
-                feats=[lvl_feat[i][None] for lvl_feat in x])
+                feats=[lvl_feat[i][None] for lvl_feat in x],
+            )
             # record the `iou_topk`-th largest IoU in an image
-            iou_topk = min(self.train_cfg.dynamic_rcnn.iou_topk,
-                           len(assign_result.max_overlaps))
+            iou_topk = min(
+                self.train_cfg.dynamic_rcnn.iou_topk, len(assign_result.max_overlaps)
+            )
             ious, _ = torch.topk(assign_result.max_overlaps, iou_topk)
             cur_iou.append(ious[-1].item())
             sampling_results.append(sampling_result)
@@ -79,14 +85,14 @@ class DynamicRoIHead(StandardRoIHead):
         # bbox head forward and loss
         if self.with_bbox:
             bbox_results = self.bbox_loss(x, sampling_results)
-            losses.update(bbox_results['loss_bbox'])
+            losses.update(bbox_results["loss_bbox"])
 
         # mask head forward and loss
         if self.with_mask:
-            mask_results = self.mask_loss(x, sampling_results,
-                                          bbox_results['bbox_feats'],
-                                          batch_gt_instances)
-            losses.update(mask_results['loss_mask'])
+            mask_results = self.mask_loss(
+                x, sampling_results, bbox_results["bbox_feats"], batch_gt_instances
+            )
+            losses.update(mask_results["loss_mask"])
 
         # update IoU threshold and SmoothL1 beta
         update_iter_interval = self.train_cfg.dynamic_rcnn.update_iter_interval
@@ -95,8 +101,9 @@ class DynamicRoIHead(StandardRoIHead):
 
         return losses
 
-    def bbox_loss(self, x: Tuple[Tensor],
-                  sampling_results: List[SamplingResult]) -> dict:
+    def bbox_loss(
+        self, x: Tuple[Tensor], sampling_results: List[SamplingResult]
+    ) -> dict:
         """Perform forward propagation and loss calculation of the bbox head on
         the features of the upstream network.
 
@@ -116,24 +123,24 @@ class DynamicRoIHead(StandardRoIHead):
         bbox_results = self._bbox_forward(x, rois)
 
         bbox_loss_and_target = self.bbox_head.loss_and_target(
-            cls_score=bbox_results['cls_score'],
-            bbox_pred=bbox_results['bbox_pred'],
+            cls_score=bbox_results["cls_score"],
+            bbox_pred=bbox_results["bbox_pred"],
             rois=rois,
             sampling_results=sampling_results,
-            rcnn_train_cfg=self.train_cfg)
-        bbox_results.update(loss_bbox=bbox_loss_and_target['loss_bbox'])
+            rcnn_train_cfg=self.train_cfg,
+        )
+        bbox_results.update(loss_bbox=bbox_loss_and_target["loss_bbox"])
 
         # record the `beta_topk`-th smallest target
         # `bbox_targets[2]` and `bbox_targets[3]` stand for bbox_targets
         # and bbox_weights, respectively
-        bbox_targets = bbox_loss_and_target['bbox_targets']
+        bbox_targets = bbox_loss_and_target["bbox_targets"]
         pos_inds = bbox_targets[3][:, 0].nonzero().squeeze(1)
         num_pos = len(pos_inds)
         num_imgs = len(sampling_results)
         if num_pos > 0:
             cur_target = bbox_targets[2][pos_inds, :2].abs().mean(dim=1)
-            beta_topk = min(self.train_cfg.dynamic_rcnn.beta_topk * num_imgs,
-                            num_pos)
+            beta_topk = min(self.train_cfg.dynamic_rcnn.beta_topk * num_imgs, num_pos)
             cur_target = torch.kthvalue(cur_target, beta_topk)[0].item()
             self.beta_history.append(cur_target)
 
@@ -146,8 +153,9 @@ class DynamicRoIHead(StandardRoIHead):
         Returns:
             tuple[float]: the updated ``iou_thr`` and ``beta``.
         """
-        new_iou_thr = max(self.train_cfg.dynamic_rcnn.initial_iou,
-                          np.mean(self.iou_history))
+        new_iou_thr = max(
+            self.train_cfg.dynamic_rcnn.initial_iou, np.mean(self.iou_history)
+        )
         self.iou_history = []
         self.bbox_assigner.pos_iou_thr = new_iou_thr
         self.bbox_assigner.neg_iou_thr = new_iou_thr
@@ -156,8 +164,9 @@ class DynamicRoIHead(StandardRoIHead):
             # avoid 0 or too small value for new_beta
             new_beta = self.bbox_head.loss_bbox.beta
         else:
-            new_beta = min(self.train_cfg.dynamic_rcnn.initial_beta,
-                           np.median(self.beta_history))
+            new_beta = min(
+                self.train_cfg.dynamic_rcnn.initial_beta, np.median(self.beta_history)
+            )
         self.beta_history = []
         self.bbox_head.loss_bbox.beta = new_beta
         return new_iou_thr, new_beta

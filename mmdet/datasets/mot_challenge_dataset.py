@@ -16,10 +16,21 @@ class MOTChallengeDataset(BaseVideoDataset):
     """
 
     METAINFO = {
-        'classes':
-        ('pedestrian', 'person_on_vehicle', 'car', 'bicycle', 'motorbike',
-         'non_mot_vehicle', 'static_person', 'distractor', 'occluder',
-         'occluder_on_ground', 'occluder_full', 'reflection', 'crowd')
+        "classes": (
+            "pedestrian",
+            "person_on_vehicle",
+            "car",
+            "bicycle",
+            "motorbike",
+            "non_mot_vehicle",
+            "static_person",
+            "distractor",
+            "occluder",
+            "occluder_on_ground",
+            "occluder_full",
+            "reflection",
+            "crowd",
+        )
     }
 
     def __init__(self, visibility_thr: float = -1, *args, **kwargs):
@@ -37,52 +48,51 @@ class MOTChallengeDataset(BaseVideoDataset):
         Returns:
             Union[dict, List[dict]]: Parsed annotation.
         """
-        img_info = raw_data_info['raw_img_info']
-        ann_info = raw_data_info['raw_ann_info']
+        img_info = raw_data_info["raw_img_info"]
+        ann_info = raw_data_info["raw_ann_info"]
         data_info = {}
 
         data_info.update(img_info)
-        if self.data_prefix.get('img_path', None) is not None:
-            img_path = osp.join(self.data_prefix['img_path'],
-                                img_info['file_name'])
+        if self.data_prefix.get("img_path", None) is not None:
+            img_path = osp.join(self.data_prefix["img_path"], img_info["file_name"])
         else:
-            img_path = img_info['file_name']
-        data_info['img_path'] = img_path
+            img_path = img_info["file_name"]
+        data_info["img_path"] = img_path
 
         instances = []
         for i, ann in enumerate(ann_info):
             instance = {}
 
-            if (not self.test_mode) and (ann['visibility'] <
-                                         self.visibility_thr):
+            if (not self.test_mode) and (ann["visibility"] < self.visibility_thr):
                 continue
-            if ann.get('ignore', False):
+            if ann.get("ignore", False):
                 continue
-            x1, y1, w, h = ann['bbox']
-            inter_w = max(0, min(x1 + w, img_info['width']) - max(x1, 0))
-            inter_h = max(0, min(y1 + h, img_info['height']) - max(y1, 0))
+            x1, y1, w, h = ann["bbox"]
+            inter_w = max(0, min(x1 + w, img_info["width"]) - max(x1, 0))
+            inter_h = max(0, min(y1 + h, img_info["height"]) - max(y1, 0))
             if inter_w * inter_h == 0:
                 continue
-            if ann['area'] <= 0 or w < 1 or h < 1:
+            if ann["area"] <= 0 or w < 1 or h < 1:
                 continue
-            if ann['category_id'] not in self.cat_ids:
+            if ann["category_id"] not in self.cat_ids:
                 continue
             bbox = [x1, y1, x1 + w, y1 + h]
 
-            if ann.get('iscrowd', False):
-                instance['ignore_flag'] = 1
+            if ann.get("iscrowd", False):
+                instance["ignore_flag"] = 1
             else:
-                instance['ignore_flag'] = 0
-            instance['bbox'] = bbox
-            instance['bbox_label'] = self.cat2label[ann['category_id']]
-            instance['instance_id'] = ann['instance_id']
-            instance['category_id'] = ann['category_id']
-            instance['mot_conf'] = ann['mot_conf']
-            instance['visibility'] = ann['visibility']
+                instance["ignore_flag"] = 0
+            instance["bbox"] = bbox
+            instance["bbox_label"] = self.cat2label[ann["category_id"]]
+            instance["instance_id"] = ann["instance_id"]
+            instance["category_id"] = ann["category_id"]
+            instance["mot_conf"] = ann["mot_conf"]
+            instance["visibility"] = ann["visibility"]
             if len(instance) > 0:
                 instances.append(instance)
         if not self.test_mode:
-            assert len(instances) > 0, f'No valid instances found in ' \
-                f'image {data_info["img_path"]}!'
-        data_info['instances'] = instances
+            assert len(instances) > 0, (
+                f'No valid instances found in ' f'image {data_info["img_path"]}!'
+            )
+        data_info["instances"] = instances
         return data_info

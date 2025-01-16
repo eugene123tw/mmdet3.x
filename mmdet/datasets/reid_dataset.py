@@ -36,15 +36,14 @@ class ReIDDataset(BaseDataset):
         check_file_exist(self.ann_file)
         data_list = []
         with open(self.ann_file) as f:
-            samples = [x.strip().split(' ') for x in f.readlines()]
+            samples = [x.strip().split(" ") for x in f.readlines()]
             for filename, gt_label in samples:
                 info = dict(img_prefix=self.data_prefix)
-                if self.data_prefix['img_path'] is not None:
-                    info['img_path'] = osp.join(self.data_prefix['img_path'],
-                                                filename)
+                if self.data_prefix["img_path"] is not None:
+                    info["img_path"] = osp.join(self.data_prefix["img_path"], filename)
                 else:
-                    info['img_path'] = filename
-                info['gt_label'] = np.array(gt_label, dtype=np.int64)
+                    info["img_path"] = filename
+                info["gt_label"] = np.array(gt_label, dtype=np.int64)
                 data_list.append(info)
         self._parse_ann_info(data_list)
         return data_list
@@ -54,7 +53,7 @@ class ReIDDataset(BaseDataset):
         index_tmp_dic = defaultdict(list)  # pid->[idx1,...,idxN]
         self.index_dic = dict()  # pid->array([idx1,...,idxN])
         for idx, info in enumerate(data_list):
-            pid = info['gt_label']
+            pid = info["gt_label"]
             index_tmp_dic[int(pid)].append(idx)
         for pid, idxs in index_tmp_dic.items():
             self.index_dic[pid] = np.asarray(idxs, dtype=np.int64)
@@ -71,17 +70,15 @@ class ReIDDataset(BaseDataset):
         """
         data_info = self.get_data_info(idx)
         if self.triplet_sampler is not None:
-            img_info = self.triplet_sampling(data_info['gt_label'],
-                                             **self.triplet_sampler)
+            img_info = self.triplet_sampling(
+                data_info["gt_label"], **self.triplet_sampler
+            )
             data_info = copy.deepcopy(img_info)  # triplet -> list
         else:
             data_info = copy.deepcopy(data_info)  # no triplet -> dict
         return self.pipeline(data_info)
 
-    def triplet_sampling(self,
-                         pos_pid,
-                         num_ids: int = 8,
-                         ins_per_id: int = 4) -> Dict:
+    def triplet_sampling(self, pos_pid, num_ids: int = 8, ins_per_id: int = 4) -> Dict:
         """Triplet sampler for hard mining triplet loss. First, for one
         pos_pid, random sample ins_per_id images with same person id.
 
@@ -96,26 +93,29 @@ class ReIDDataset(BaseDataset):
         Returns:
             Dict: Annotation information of num_ids X ins_per_id images.
         """
-        assert len(self.pids) >= num_ids, \
-            'The number of person ids in the training set must ' \
-            'be greater than the number of person ids in the sample.'
+        assert len(self.pids) >= num_ids, (
+            "The number of person ids in the training set must "
+            "be greater than the number of person ids in the sample."
+        )
 
-        pos_idxs = self.index_dic[int(
-            pos_pid)]  # all positive idxs for pos_pid
+        pos_idxs = self.index_dic[int(pos_pid)]  # all positive idxs for pos_pid
         idxs_list = []
         # select positive samplers
-        idxs_list.extend(pos_idxs[np.random.choice(
-            pos_idxs.shape[0], ins_per_id, replace=True)])
+        idxs_list.extend(
+            pos_idxs[np.random.choice(pos_idxs.shape[0], ins_per_id, replace=True)]
+        )
         # select negative ids
         neg_pids = np.random.choice(
             [i for i, _ in enumerate(self.pids) if i != pos_pid],
             num_ids - 1,
-            replace=False)
+            replace=False,
+        )
         # select negative samplers for each negative id
         for neg_pid in neg_pids:
             neg_idxs = self.index_dic[neg_pid]
-            idxs_list.extend(neg_idxs[np.random.choice(
-                neg_idxs.shape[0], ins_per_id, replace=True)])
+            idxs_list.extend(
+                neg_idxs[np.random.choice(neg_idxs.shape[0], ins_per_id, replace=True)]
+            )
         # return the final triplet batch
         triplet_img_infos = []
         for idx in idxs_list:

@@ -7,8 +7,11 @@ from torch import Tensor
 
 from mmdet.models.dense_heads import DINOHead
 from mmdet.registry import MODELS
-from mmdet.structures.bbox import (bbox_cxcywh_to_xyxy, bbox_overlaps,
-                                   bbox_xyxy_to_cxcywh)
+from mmdet.structures.bbox import (
+    bbox_cxcywh_to_xyxy,
+    bbox_overlaps,
+    bbox_xyxy_to_cxcywh,
+)
 from mmdet.utils import InstanceList
 from .utils import KeysRecorder
 
@@ -43,28 +46,31 @@ class AlignDETRHead(DINOHead):
             to calculate positive sample weight. Defaults to `1.5`.
     """
 
-    def __init__(self,
-                 *args,
-                 all_layers_num_gt_repeat: List[int] = None,
-                 alpha: float = 0.25,
-                 gamma: float = 2.0,
-                 tau: float = 1.5,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        all_layers_num_gt_repeat: List[int] = None,
+        alpha: float = 0.25,
+        gamma: float = 2.0,
+        tau: float = 1.5,
+        **kwargs,
+    ) -> None:
         self.all_layers_num_gt_repeat = all_layers_num_gt_repeat
         self.alpha = alpha
         self.gamma = gamma
         self.tau = tau
         self.weight_table = torch.zeros(
-            len(all_layers_num_gt_repeat), max(all_layers_num_gt_repeat))
+            len(all_layers_num_gt_repeat), max(all_layers_num_gt_repeat)
+        )
         for layer_index, num_gt_repeat in enumerate(all_layers_num_gt_repeat):
             self.weight_table[layer_index][:num_gt_repeat] = torch.exp(
-                -torch.arange(num_gt_repeat) / tau)
+                -torch.arange(num_gt_repeat) / tau
+            )
 
         super().__init__(*args, **kwargs)
         assert len(self.all_layers_num_gt_repeat) == self.num_pred_layer
 
-    def loss_by_feat(self, all_layers_cls_scores: Tensor, *args,
-                     **kwargs) -> Any:
+    def loss_by_feat(self, all_layers_cls_scores: Tensor, *args, **kwargs) -> Any:
         """Loss function.
             AlignDETR: This method is based on `DINOHead.loss_by_feat`.
 
@@ -80,15 +86,18 @@ class AlignDETRHead(DINOHead):
         # Wrap `all_layers_cls_scores` with KeysRecorder to record its
         #   `__getitem__` keys and get decoder layer index.
         all_layers_cls_scores = KeysRecorder(all_layers_cls_scores)
-        result = super(AlignDETRHead,
-                       self).loss_by_feat(all_layers_cls_scores, *args,
-                                          **kwargs)
+        result = super(AlignDETRHead, self).loss_by_feat(
+            all_layers_cls_scores, *args, **kwargs
+        )
         return result
 
-    def loss_by_feat_single(self, cls_scores: Union[KeysRecorder, Tensor],
-                            bbox_preds: Tensor,
-                            batch_gt_instances: InstanceList,
-                            batch_img_metas: List[dict]) -> Tuple[Tensor]:
+    def loss_by_feat_single(
+        self,
+        cls_scores: Union[KeysRecorder, Tensor],
+        bbox_preds: Tensor,
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+    ) -> Tuple[Tensor]:
         """Loss function for outputs from a single decoder layer of a single
         feature level.
             AlignDETR: This method is based on `DINOHead.loss_by_feat_single`.
@@ -115,8 +124,9 @@ class AlignDETRHead(DINOHead):
             # Outputs are from decoder layer. Get layer_index from
             #   `__getitem__` keys history.
             keys = [key for key in cls_scores.keys if isinstance(key, int)]
-            assert len(keys) == 1, \
-                'Failed to extract key from cls_scores.keys: {}'.format(keys)
+            assert (
+                len(keys) == 1
+            ), "Failed to extract key from cls_scores.keys: {}".format(keys)
             layer_index = keys[0]
             # Get dn_cls_scores tensor.
             cls_scores = cls_scores.obj
@@ -125,19 +135,23 @@ class AlignDETRHead(DINOHead):
             layer_index = self.num_pred_layer - 1
 
         for img_meta in batch_img_metas:
-            img_meta['layer_index'] = layer_index
+            img_meta["layer_index"] = layer_index
 
         results = super(AlignDETRHead, self).loss_by_feat_single(
             cls_scores,
             bbox_preds,
             batch_gt_instances=batch_gt_instances,
-            batch_img_metas=batch_img_metas)
+            batch_img_metas=batch_img_metas,
+        )
         return results
 
-    def get_targets(self, cls_scores_list: List[Tensor],
-                    bbox_preds_list: List[Tensor],
-                    batch_gt_instances: InstanceList,
-                    batch_img_metas: List[dict]) -> tuple:
+    def get_targets(
+        self,
+        cls_scores_list: List[Tensor],
+        bbox_preds_list: List[Tensor],
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+    ) -> tuple:
         """Compute regression and classification targets for a batch image.
 
         Outputs from a single decoder layer of a single feature level are used.
@@ -166,23 +180,26 @@ class AlignDETRHead(DINOHead):
             - num_total_pos (int): Number of positive samples in all images.
             - num_total_neg (int): Number of negative samples in all images.
         """
-        results = super(AlignDETRHead,
-                        self).get_targets(cls_scores_list, bbox_preds_list,
-                                          batch_gt_instances, batch_img_metas)
+        results = super(AlignDETRHead, self).get_targets(
+            cls_scores_list, bbox_preds_list, batch_gt_instances, batch_img_metas
+        )
 
         # AlignDETR: `num_total_pos` for matching queries is the number of
         #   unique gt bboxes in the batch. Refer to AlignDETR official code:
         #   https://github.com/FelixCaae/AlignDETR/blob/8c2b1806026e1b33fe1c282577de1647e352d7f0/aligndetr/criterions/base_criterion.py#L195C15-L195C15  # noqa: E501
-        num_total_pos = sum(
-            len(gt_instances) for gt_instances in batch_gt_instances)
+        num_total_pos = sum(len(gt_instances) for gt_instances in batch_gt_instances)
 
         results = list(results)
         results[-2] = num_total_pos
         return tuple(results)
 
-    def _get_targets_single(self, cls_score: Tensor, bbox_pred: Tensor,
-                            gt_instances: InstanceData,
-                            img_meta: dict) -> tuple:
+    def _get_targets_single(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        gt_instances: InstanceData,
+        img_meta: dict,
+    ) -> tuple:
         """Compute regression and classification targets for one image.
 
         Outputs from a single decoder layer of a single feature level are used.
@@ -211,9 +228,8 @@ class AlignDETRHead(DINOHead):
             - pos_inds (Tensor): Sampled positive indices for each image.
             - neg_inds (Tensor): Sampled negative indices for each image.
         """
-        img_h, img_w = img_meta['img_shape']
-        factor = bbox_pred.new_tensor([img_w, img_h, img_w,
-                                       img_h]).unsqueeze(0)
+        img_h, img_w = img_meta["img_shape"]
+        factor = bbox_pred.new_tensor([img_w, img_h, img_w, img_h]).unsqueeze(0)
         # convert bbox_pred from xywh, normalized to xyxy, unnormalized
         bbox_pred = bbox_cxcywh_to_xyxy(bbox_pred)
         bbox_pred = bbox_pred * factor
@@ -222,20 +238,27 @@ class AlignDETRHead(DINOHead):
 
         # assigner and sampler
         # AlignDETR: Get `k` of current layer.
-        layer_index = img_meta['layer_index']
+        layer_index = img_meta["layer_index"]
         num_gt_repeat = self.all_layers_num_gt_repeat[layer_index]
         assign_result = self.assigner.assign(
             pred_instances=pred_instances,
             gt_instances=gt_instances,
             img_meta=img_meta,
-            k=num_gt_repeat)
+            k=num_gt_repeat,
+        )
 
         gt_bboxes = gt_instances.bboxes
         gt_labels = gt_instances.labels
-        pos_inds = torch.nonzero(
-            assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
-        neg_inds = torch.nonzero(
-            assign_result.gt_inds == 0, as_tuple=False).squeeze(-1).unique()
+        pos_inds = (
+            torch.nonzero(assign_result.gt_inds > 0, as_tuple=False)
+            .squeeze(-1)
+            .unique()
+        )
+        neg_inds = (
+            torch.nonzero(assign_result.gt_inds == 0, as_tuple=False)
+            .squeeze(-1)
+            .unique()
+        )
         pos_assigned_gt_inds = assign_result.gt_inds[pos_inds] - 1
         pos_gt_bboxes = gt_bboxes[pos_assigned_gt_inds.long(), :]
 
@@ -248,7 +271,8 @@ class AlignDETRHead(DINOHead):
             pos_inds,
             pos_assigned_gt_inds,
             layer_index,
-            is_matching_queries=True)
+            is_matching_queries=True,
+        )
 
         label_targets, label_weights, bbox_weights = target_results
 
@@ -261,14 +285,23 @@ class AlignDETRHead(DINOHead):
         pos_gt_bboxes_normalized = pos_gt_bboxes / factor
         pos_gt_bboxes_targets = bbox_xyxy_to_cxcywh(pos_gt_bboxes_normalized)
         bbox_targets[pos_inds] = pos_gt_bboxes_targets
-        return (label_targets, label_weights, bbox_targets, bbox_weights,
-                pos_inds, neg_inds)
+        return (
+            label_targets,
+            label_weights,
+            bbox_targets,
+            bbox_weights,
+            pos_inds,
+            neg_inds,
+        )
 
-    def _loss_dn_single(self, dn_cls_scores: KeysRecorder,
-                        dn_bbox_preds: Tensor,
-                        batch_gt_instances: InstanceList,
-                        batch_img_metas: List[dict],
-                        dn_meta: Dict[str, int]) -> Tuple[Tensor]:
+    def _loss_dn_single(
+        self,
+        dn_cls_scores: KeysRecorder,
+        dn_bbox_preds: Tensor,
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+        dn_meta: Dict[str, int],
+    ) -> Tuple[Tensor]:
         """Denoising loss for outputs from a single decoder layer.
             AlignDETR: This method is based on `DINOHead._loss_dn_single`.
 
@@ -300,17 +333,17 @@ class AlignDETRHead(DINOHead):
         # AlignDETR: Add layer outputs to meta info because they are not
         #   variables of method `_get_dn_targets_single`.
         for image_index, img_meta in enumerate(batch_img_metas):
-            img_meta['dn_cls_score'] = dn_cls_scores[image_index]
-            img_meta['dn_bbox_pred'] = dn_bbox_preds[image_index]
+            img_meta["dn_cls_score"] = dn_cls_scores[image_index]
+            img_meta["dn_bbox_pred"] = dn_bbox_preds[image_index]
 
-        results = super()._loss_dn_single(dn_cls_scores, dn_bbox_preds,
-                                          batch_gt_instances, batch_img_metas,
-                                          dn_meta)
+        results = super()._loss_dn_single(
+            dn_cls_scores, dn_bbox_preds, batch_gt_instances, batch_img_metas, dn_meta
+        )
         return results
 
-    def _get_dn_targets_single(self, gt_instances: InstanceData,
-                               img_meta: dict, dn_meta: Dict[str,
-                                                             int]) -> tuple:
+    def _get_dn_targets_single(
+        self, gt_instances: InstanceData, img_meta: dict, dn_meta: Dict[str, int]
+    ) -> tuple:
         """Get targets in denoising part for one image.
             AlignDETR: This method is based on
             `DINOHead._get_dn_targets_single`.
@@ -345,8 +378,8 @@ class AlignDETRHead(DINOHead):
         """
         gt_bboxes = gt_instances.bboxes
         gt_labels = gt_instances.labels
-        num_groups = dn_meta['num_denoising_groups']
-        num_denoising_queries = dn_meta['num_denoising_queries']
+        num_groups = dn_meta["num_denoising_groups"]
+        num_denoising_queries = dn_meta["num_denoising_queries"]
         num_queries_each_group = int(num_denoising_queries / num_groups)
         device = gt_bboxes.device
 
@@ -354,22 +387,19 @@ class AlignDETRHead(DINOHead):
             t = torch.arange(len(gt_labels), dtype=torch.long, device=device)
             t = t.unsqueeze(0).repeat(num_groups, 1)
             pos_assigned_gt_inds = t.flatten()
-            pos_inds = torch.arange(
-                num_groups, dtype=torch.long, device=device)
+            pos_inds = torch.arange(num_groups, dtype=torch.long, device=device)
             pos_inds = pos_inds.unsqueeze(1) * num_queries_each_group + t
             pos_inds = pos_inds.flatten()
         else:
-            pos_inds = pos_assigned_gt_inds = \
-                gt_bboxes.new_tensor([], dtype=torch.long)
+            pos_inds = pos_assigned_gt_inds = gt_bboxes.new_tensor([], dtype=torch.long)
 
         neg_inds = pos_inds + num_queries_each_group // 2
 
         # AlignDETR: Get meta info and layer outputs.
-        img_h, img_w = img_meta['img_shape']
-        dn_cls_score = img_meta['dn_cls_score']
-        dn_bbox_pred = img_meta['dn_bbox_pred']
-        factor = dn_bbox_pred.new_tensor([img_w, img_h, img_w,
-                                          img_h]).unsqueeze(0)
+        img_h, img_w = img_meta["img_shape"]
+        dn_cls_score = img_meta["dn_cls_score"]
+        dn_bbox_pred = img_meta["dn_bbox_pred"]
+        factor = dn_bbox_pred.new_tensor([img_w, img_h, img_w, img_h]).unsqueeze(0)
 
         # AlignDETR: Convert dn_bbox_pred from xywh, normalized to xyxy,
         #   unnormalized.
@@ -378,8 +408,13 @@ class AlignDETRHead(DINOHead):
 
         # AlignDETR: Get label targets, label weights, and bbox weights.
         target_results = self._get_align_detr_targets_single(
-            dn_cls_score, dn_bbox_pred, gt_labels,
-            gt_bboxes.repeat([num_groups, 1]), pos_inds, pos_assigned_gt_inds)
+            dn_cls_score,
+            dn_bbox_pred,
+            gt_labels,
+            gt_bboxes.repeat([num_groups, 1]),
+            pos_inds,
+            pos_assigned_gt_inds,
+        )
 
         label_targets, label_weights, bbox_weights = target_results
 
@@ -393,19 +428,27 @@ class AlignDETRHead(DINOHead):
         gt_bboxes_targets = bbox_xyxy_to_cxcywh(gt_bboxes_normalized)
         bbox_targets[pos_inds] = gt_bboxes_targets.repeat([num_groups, 1])
 
-        return (label_targets, label_weights, bbox_targets, bbox_weights,
-                pos_inds, neg_inds)
+        return (
+            label_targets,
+            label_weights,
+            bbox_targets,
+            bbox_weights,
+            pos_inds,
+            neg_inds,
+        )
 
-    def _get_align_detr_targets_single(self,
-                                       cls_score: Tensor,
-                                       bbox_pred: Tensor,
-                                       gt_labels: Tensor,
-                                       pos_gt_bboxes: Tensor,
-                                       pos_inds: Tensor,
-                                       pos_assigned_gt_inds: Tensor,
-                                       layer_index: int = -1,
-                                       is_matching_queries: bool = False):
-        '''AlignDETR: Get label targets, label weights, and bbox weights based
+    def _get_align_detr_targets_single(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        gt_labels: Tensor,
+        pos_gt_bboxes: Tensor,
+        pos_inds: Tensor,
+        pos_assigned_gt_inds: Tensor,
+        layer_index: int = -1,
+        is_matching_queries: bool = False,
+    ):
+        """AlignDETR: Get label targets, label weights, and bbox weights based
             on `t`, the weighted geometric average of the confident score and
             the IoU score, to align classification and regression scores.
 
@@ -440,7 +483,7 @@ class AlignDETRHead(DINOHead):
                 [num_queries or num_denoising_queries, cls_out_channels].
             - bbox_weights (Tensor): BBox weights of one image. Shape
                 [num_queries or num_denoising_queries, 4].
-        '''
+        """
 
         # Classification loss
         # =           1 * BCE(prob, t * rank_weights) for positive sample;
@@ -451,8 +494,7 @@ class AlignDETRHead(DINOHead):
         # label_weights = pred**gamma for negative sample;
         #               = 1           for positive sample.
         cls_prob = cls_score.sigmoid()
-        label_targets = torch.zeros_like(
-            cls_score, device=pos_gt_bboxes.device)
+        label_targets = torch.zeros_like(cls_score, device=pos_gt_bboxes.device)
         label_weights = cls_prob**self.gamma
 
         bbox_weights = torch.zeros_like(bbox_pred, dtype=pos_gt_bboxes.dtype)
@@ -461,15 +503,12 @@ class AlignDETRHead(DINOHead):
             return label_targets, label_weights, bbox_weights
 
         pos_cls_score_inds = (pos_inds, gt_labels[pos_assigned_gt_inds])
-        iou_scores = bbox_overlaps(
-            bbox_pred[pos_inds], pos_gt_bboxes, is_aligned=True)
+        iou_scores = bbox_overlaps(bbox_pred[pos_inds], pos_gt_bboxes, is_aligned=True)
 
         # t (Tensor): The weighted geometric average of the confident score
         #   and the IoU score, to align classification and regression scores.
         #   Shape [num_positive].
-        t = (
-            cls_prob[pos_cls_score_inds]**self.alpha *
-            iou_scores**(1 - self.alpha))
+        t = cls_prob[pos_cls_score_inds] ** self.alpha * iou_scores ** (1 - self.alpha)
         t = torch.clamp(t, 0.01).detach()
 
         # Calculate rank_weights for matching queries.
@@ -479,8 +518,7 @@ class AlignDETRHead(DINOHead):
             rank_weights = torch.zeros_like(t, dtype=self.weight_table.dtype)
 
             assert 0 <= layer_index < len(self.weight_table), layer_index
-            rank_to_weight = self.weight_table[layer_index].to(
-                rank_weights.device)
+            rank_to_weight = self.weight_table[layer_index].to(rank_weights.device)
             unique_gt_inds = torch.unique(pos_assigned_gt_inds)
 
             # For each positive gt bbox, get all predictions assigned to it,
@@ -490,14 +528,12 @@ class AlignDETRHead(DINOHead):
                 # Weights are based on their rank sorted by t in the group.
                 pred_group = t[pred_group_cond]
                 indices = pred_group.sort(descending=True)[1]
-                group_weights = torch.zeros_like(
-                    indices, dtype=self.weight_table.dtype)
-                group_weights[indices] = rank_to_weight[:len(indices)]
+                group_weights = torch.zeros_like(indices, dtype=self.weight_table.dtype)
+                group_weights[indices] = rank_to_weight[: len(indices)]
                 rank_weights[pred_group_cond] = group_weights
 
             t = t * rank_weights
-            pos_bbox_weights = rank_weights.unsqueeze(-1).repeat(
-                1, bbox_pred.size(-1))
+            pos_bbox_weights = rank_weights.unsqueeze(-1).repeat(1, bbox_pred.size(-1))
             bbox_weights[pos_inds] = pos_bbox_weights
         else:
             bbox_weights[pos_inds] = 1.0

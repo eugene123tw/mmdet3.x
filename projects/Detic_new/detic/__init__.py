@@ -8,6 +8,11 @@ from .imagenet_lvis import ImageNetLVISV1Dataset
 from .zero_shot_classifier import ZeroShotClassifier
 
 __all__ = [
-    'CenterNetRPNHead', 'Detic', 'DeticBBoxHead', 'DeticRoIHead',
-    'ZeroShotClassifier', 'HeatmapFocalLoss', 'ImageNetLVISV1Dataset'
+    "CenterNetRPNHead",
+    "Detic",
+    "DeticBBoxHead",
+    "DeticRoIHead",
+    "ZeroShotClassifier",
+    "HeatmapFocalLoss",
+    "ImageNetLVISV1Dataset",
 ]

@@ -36,14 +36,14 @@ class COCOCaptionMetric(BaseMetric):
             `retrieval_type` for unambiguous results. Defaults to TR.
     """
 
-    def __init__(self,
-                 ann_file: str,
-                 collect_device: str = 'cpu',
-                 prefix: Optional[str] = None):
+    def __init__(
+        self, ann_file: str, collect_device: str = "cpu", prefix: Optional[str] = None
+    ):
         if COCOEvalCap is None:
             raise RuntimeError(
-                'COCOEvalCap is not installed, please install it by: '
-                'pip install pycocoevalcap')
+                "COCOEvalCap is not installed, please install it by: "
+                "pip install pycocoevalcap"
+            )
 
         super().__init__(collect_device=collect_device, prefix=prefix)
         self.ann_file = ann_file
@@ -62,8 +62,8 @@ class COCOCaptionMetric(BaseMetric):
         for data_sample in data_samples:
             result = dict()
 
-            result['caption'] = data_sample['pred_caption']
-            result['image_id'] = int(data_sample['img_id'])
+            result["caption"] = data_sample["pred_caption"]
+            result["image_id"] = int(data_sample["img_id"])
 
             # Save the result to `self.results`.
             self.results.append(result)
@@ -81,12 +81,11 @@ class COCOCaptionMetric(BaseMetric):
         # NOTICE: don't access `self.results` from the method.
 
         with tempfile.TemporaryDirectory() as temp_dir:
-
             eval_result_file = save_result(
                 result=results,
                 result_dir=temp_dir,
-                filename='caption_pred',
-                remove_duplicate='image_id',
+                filename="caption_pred",
+                remove_duplicate="image_id",
             )
 
             coco_val = coco_caption_eval(eval_result_file, self.ann_file)
@@ -94,7 +93,7 @@ class COCOCaptionMetric(BaseMetric):
         return coco_val
 
 
-def save_result(result, result_dir, filename, remove_duplicate=''):
+def save_result(result, result_dir, filename, remove_duplicate=""):
     """Saving predictions as json file for evaluation."""
     # combine results from all processes
     if remove_duplicate:
@@ -106,9 +105,9 @@ def save_result(result, result_dir, filename, remove_duplicate=''):
                 result_new.append(res)
         result = result_new
 
-    final_result_file_url = os.path.join(result_dir, '%s.json' % filename)
-    print(f'result file saved to {final_result_file_url}')
-    json.dump(result, open(final_result_file_url, 'w'))
+    final_result_file_url = os.path.join(result_dir, "%s.json" % filename)
+    print(f"result file saved to {final_result_file_url}")
+    json.dump(result, open(final_result_file_url, "w"))
 
     return final_result_file_url
 
@@ -123,13 +122,13 @@ def coco_caption_eval(results_file, ann_file):
     coco_eval = COCOEvalCap(coco, coco_result)
 
     # make sure the image ids are the same
-    coco_eval.params['image_id'] = coco_result.getImgIds()
+    coco_eval.params["image_id"] = coco_result.getImgIds()
 
     # This will take some times at the first run
     coco_eval.evaluate()
 
     # print output evaluation scores
     for metric, score in coco_eval.eval.items():
-        print(f'{metric}: {score:.3f}')
+        print(f"{metric}: {score:.3f}")
 
     return coco_eval.eval

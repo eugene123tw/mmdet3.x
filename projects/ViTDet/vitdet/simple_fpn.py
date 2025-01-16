@@ -15,15 +15,17 @@ from mmdet.utils import MultiConfig, OptConfigType
 class SimpleFPN(BaseModule):
     """Simple Feature Pyramid Network for ViTDet."""
 
-    def __init__(self,
-                 backbone_channel: int,
-                 in_channels: List[int],
-                 out_channels: int,
-                 num_outs: int,
-                 conv_cfg: OptConfigType = None,
-                 norm_cfg: OptConfigType = None,
-                 act_cfg: OptConfigType = None,
-                 init_cfg: MultiConfig = None) -> None:
+    def __init__(
+        self,
+        backbone_channel: int,
+        in_channels: List[int],
+        out_channels: int,
+        num_outs: int,
+        conv_cfg: OptConfigType = None,
+        norm_cfg: OptConfigType = None,
+        act_cfg: OptConfigType = None,
+        init_cfg: MultiConfig = None,
+    ) -> None:
         super().__init__(init_cfg=init_cfg)
         assert isinstance(in_channels, list)
         self.backbone_channel = backbone_channel
@@ -33,15 +35,16 @@ class SimpleFPN(BaseModule):
         self.num_outs = num_outs
 
         self.fpn1 = nn.Sequential(
-            nn.ConvTranspose2d(self.backbone_channel,
-                               self.backbone_channel // 2, 2, 2),
+            nn.ConvTranspose2d(self.backbone_channel, self.backbone_channel // 2, 2, 2),
             build_norm_layer(norm_cfg, self.backbone_channel // 2)[1],
             nn.GELU(),
-            nn.ConvTranspose2d(self.backbone_channel // 2,
-                               self.backbone_channel // 4, 2, 2))
+            nn.ConvTranspose2d(
+                self.backbone_channel // 2, self.backbone_channel // 4, 2, 2
+            ),
+        )
         self.fpn2 = nn.Sequential(
-            nn.ConvTranspose2d(self.backbone_channel,
-                               self.backbone_channel // 2, 2, 2))
+            nn.ConvTranspose2d(self.backbone_channel, self.backbone_channel // 2, 2, 2)
+        )
         self.fpn3 = nn.Sequential(nn.Identity())
         self.fpn4 = nn.Sequential(nn.MaxPool2d(kernel_size=2, stride=2))
 
@@ -56,7 +59,8 @@ class SimpleFPN(BaseModule):
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
                 act_cfg=act_cfg,
-                inplace=False)
+                inplace=False,
+            )
             fpn_conv = ConvModule(
                 out_channels,
                 out_channels,
@@ -65,7 +69,8 @@ class SimpleFPN(BaseModule):
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
                 act_cfg=act_cfg,
-                inplace=False)
+                inplace=False,
+            )
 
             self.lateral_convs.append(l_conv)
             self.fpn_convs.append(fpn_conv)
@@ -87,8 +92,7 @@ class SimpleFPN(BaseModule):
 
         # build laterals
         laterals = [
-            lateral_conv(inputs[i])
-            for i, lateral_conv in enumerate(self.lateral_convs)
+            lateral_conv(inputs[i]) for i, lateral_conv in enumerate(self.lateral_convs)
         ]
 
         # build outputs

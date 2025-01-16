@@ -11,31 +11,28 @@ from mmengine.registry import init_default_scope
 from mmdet.apis import inference_mot, init_track_model
 from mmdet.registry import VISUALIZERS
 
-IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png')
+IMG_EXTENSIONS = (".jpg", ".jpeg", ".png")
 
 
 def parse_args():
     parser = ArgumentParser()
+    parser.add_argument("inputs", type=str, help="Input image file or folder path.")
+    parser.add_argument("config", help="config file")
+    parser.add_argument("--checkpoint", help="checkpoint file")
+    parser.add_argument("--detector", help="det checkpoint file")
+    parser.add_argument("--reid", help="reid checkpoint file")
+    parser.add_argument("--device", default="cuda:0", help="device used for inference")
     parser.add_argument(
-        'inputs', type=str, help='Input image file or folder path.')
-    parser.add_argument('config', help='config file')
-    parser.add_argument('--checkpoint', help='checkpoint file')
-    parser.add_argument('--detector', help='det checkpoint file')
-    parser.add_argument('--reid', help='reid checkpoint file')
-    parser.add_argument(
-        '--device', default='cuda:0', help='device used for inference')
-    parser.add_argument(
-        '--score-thr',
+        "--score-thr",
         type=float,
         default=0.0,
-        help='The threshold of score to filter bboxes.')
+        help="The threshold of score to filter bboxes.",
+    )
+    parser.add_argument("--out", help="output video file (mp4 format) or folder")
     parser.add_argument(
-        '--out', help='output video file (mp4 format) or folder')
-    parser.add_argument(
-        '--show',
-        action='store_true',
-        help='whether show the results on the fly')
-    parser.add_argument('--fps', help='FPS of the output video')
+        "--show", action="store_true", help="whether show the results on the fly"
+    )
+    parser.add_argument("--fps", help="FPS of the output video")
     args = parser.parse_args()
     return args
 
@@ -45,9 +42,9 @@ def main(args):
     # load images
     if osp.isdir(args.inputs):
         imgs = sorted(
-            filter(lambda x: x.endswith(IMG_EXTENSIONS),
-                   os.listdir(args.inputs)),
-            key=lambda x: int(x.split('.')[0]))
+            filter(lambda x: x.endswith(IMG_EXTENSIONS), os.listdir(args.inputs)),
+            key=lambda x: int(x.split(".")[0]),
+        )
         in_video = False
     else:
         imgs = mmcv.VideoReader(args.inputs)
@@ -56,7 +53,7 @@ def main(args):
     # define output
     out_video = False
     if args.out is not None:
-        if args.out.endswith('.mp4'):
+        if args.out.endswith(".mp4"):
             out_video = True
             out_dir = tempfile.TemporaryDirectory()
             out_path = out_dir.name
@@ -72,18 +69,15 @@ def main(args):
         if fps is None and in_video:
             fps = imgs.fps
         if not fps:
-            raise ValueError('Please set the FPS for the output video.')
+            raise ValueError("Please set the FPS for the output video.")
         fps = int(fps)
 
-    init_default_scope('mmdet')
+    init_default_scope("mmdet")
 
     # build the model from a config file and a checkpoint file
     model = init_track_model(
-        args.config,
-        args.checkpoint,
-        args.detector,
-        args.reid,
-        device=args.device)
+        args.config, args.checkpoint, args.detector, args.reid, device=args.device
+    )
 
     # build the visualizer
     visualizer = VISUALIZERS.build(model.cfg.visualizer)
@@ -99,7 +93,7 @@ def main(args):
         result = inference_mot(model, img, frame_id=i, video_len=len(imgs))
         if args.out is not None:
             if in_video or out_video:
-                out_file = osp.join(out_path, f'{i:06d}.jpg')
+                out_file = osp.join(out_path, f"{i:06d}.jpg")
             else:
                 out_file = osp.join(out_path, img.rsplit(os.sep, 1)[-1])
         else:
@@ -107,7 +101,7 @@ def main(args):
 
         # show the results
         visualizer.add_datasample(
-            'mot',
+            "mot",
             img[..., ::-1],
             data_sample=result[0],
             show=args.show,
@@ -115,16 +109,17 @@ def main(args):
             out_file=out_file,
             wait_time=float(1 / int(fps)) if fps else 0,
             pred_score_thr=args.score_thr,
-            step=i)
+            step=i,
+        )
 
         prog_bar.update()
 
     if args.out and out_video:
-        print(f'making the output video at {args.out} with a FPS of {fps}')
-        mmcv.frames2video(out_path, args.out, fps=fps, fourcc='mp4v')
+        print(f"making the output video at {args.out} with a FPS of {fps}")
+        mmcv.frames2video(out_path, args.out, fps=fps, fourcc="mp4v")
         out_dir.cleanup()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = parse_args()
     main(args)

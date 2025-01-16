@@ -85,12 +85,10 @@ class MultiBranch(BaseTransform):
         >>> )
     """
 
-    def __init__(self, branch_field: List[str],
-                 **branch_pipelines: dict) -> None:
+    def __init__(self, branch_field: List[str], **branch_pipelines: dict) -> None:
         self.branch_field = branch_field
         self.branch_pipelines = {
-            branch: Compose(pipeline)
-            for branch, pipeline in branch_pipelines.items()
+            branch: Compose(pipeline) for branch, pipeline in branch_pipelines.items()
         }
 
     def transform(self, results: dict) -> dict:
@@ -110,7 +108,7 @@ class MultiBranch(BaseTransform):
 
         multi_results = {}
         for branch in self.branch_field:
-            multi_results[branch] = {'inputs': None, 'data_samples': None}
+            multi_results[branch] = {"inputs": None, "data_samples": None}
         for branch, pipeline in self.branch_pipelines.items():
             branch_results = pipeline(copy.deepcopy(results))
             # If one branch pipeline returns None,
@@ -130,7 +128,7 @@ class MultiBranch(BaseTransform):
 
     def __repr__(self) -> str:
         repr_str = self.__class__.__name__
-        repr_str += f'(branch_pipelines={list(self.branch_pipelines.keys())})'
+        repr_str += f"(branch_pipelines={list(self.branch_pipelines.keys())})"
         return repr_str
 
 
@@ -161,10 +159,10 @@ class RandomOrder(Compose):
 
     def __repr__(self):
         """Compute the string representation."""
-        format_string = self.__class__.__name__ + '('
+        format_string = self.__class__.__name__ + "("
         for t in self.transforms:
-            format_string += f'{t.__class__.__name__}, '
-        format_string += ')'
+            format_string += f"{t.__class__.__name__}, "
+        format_string += ")"
         return format_string
 
 
@@ -219,10 +217,11 @@ class ProposalBroadcaster(BaseTransform):
         Returns:
             dict: Updated result dict.
         """
-        assert results.get('proposals', None) is not None, \
-            '`proposals` should be in the results, please delete ' \
-            '`ProposalBroadcaster` in your configs, or check whether ' \
-            'you have load proposals successfully.'
+        assert results.get("proposals", None) is not None, (
+            "`proposals` should be in the results, please delete "
+            "`ProposalBroadcaster` in your configs, or check whether "
+            "you have load proposals successfully."
+        )
 
         inputs = self._process_input(results)
         outputs = self._apply_transforms(inputs)
@@ -240,7 +239,7 @@ class ProposalBroadcaster(BaseTransform):
             list[dict]: A list of input data.
         """
         cp_data = copy.deepcopy(data)
-        cp_data['gt_bboxes'] = cp_data['proposals']
+        cp_data["gt_bboxes"] = cp_data["proposals"]
         scatters = [data, cp_data]
         return scatters
 
@@ -269,9 +268,11 @@ class ProposalBroadcaster(BaseTransform):
         Returns:
             dict: Updated result dict.
         """
-        assert isinstance(output_scatters, list) and \
-               isinstance(output_scatters[0], dict) and \
-               len(output_scatters) == 2
+        assert (
+            isinstance(output_scatters, list)
+            and isinstance(output_scatters[0], dict)
+            and len(output_scatters) == 2
+        )
         outputs = output_scatters[0]
-        outputs['proposals'] = output_scatters[1]['gt_bboxes']
+        outputs["proposals"] = output_scatters[1]["gt_bboxes"]
         return outputs

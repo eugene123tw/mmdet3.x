@@ -45,20 +45,21 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
             the initialization. Defaults to None.
     """
 
-    def __init__(self,
-                 backbone: ConfigType,
-                 neck: OptConfigType = None,
-                 encoder: OptConfigType = None,
-                 decoder: OptConfigType = None,
-                 bbox_head: OptConfigType = None,
-                 positional_encoding: OptConfigType = None,
-                 num_queries: int = 100,
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None) -> None:
-        super().__init__(
-            data_preprocessor=data_preprocessor, init_cfg=init_cfg)
+    def __init__(
+        self,
+        backbone: ConfigType,
+        neck: OptConfigType = None,
+        encoder: OptConfigType = None,
+        decoder: OptConfigType = None,
+        bbox_head: OptConfigType = None,
+        positional_encoding: OptConfigType = None,
+        num_queries: int = 100,
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        data_preprocessor: OptConfigType = None,
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
+        super().__init__(data_preprocessor=data_preprocessor, init_cfg=init_cfg)
         # process args
         bbox_head.update(train_cfg=train_cfg)
         bbox_head.update(test_cfg=test_cfg)
@@ -79,10 +80,10 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
     @abstractmethod
     def _init_layers(self) -> None:
         """Initialize layers except for backbone, neck and bbox_head."""
-        pass
 
-    def loss(self, batch_inputs: Tensor,
-             batch_data_samples: SampleList) -> Union[dict, list]:
+    def loss(
+        self, batch_inputs: Tensor, batch_data_samples: SampleList
+    ) -> Union[dict, list]:
         """Calculate losses from a batch of inputs and data samples.
 
         Args:
@@ -96,17 +97,16 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
             dict: A dictionary of loss components
         """
         img_feats = self.extract_feat(batch_inputs)
-        head_inputs_dict = self.forward_transformer(img_feats,
-                                                    batch_data_samples)
+        head_inputs_dict = self.forward_transformer(img_feats, batch_data_samples)
         losses = self.bbox_head.loss(
-            **head_inputs_dict, batch_data_samples=batch_data_samples)
+            **head_inputs_dict, batch_data_samples=batch_data_samples
+        )
 
         return losses
 
-    def predict(self,
-                batch_inputs: Tensor,
-                batch_data_samples: SampleList,
-                rescale: bool = True) -> SampleList:
+    def predict(
+        self, batch_inputs: Tensor, batch_data_samples: SampleList, rescale: bool = True
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -131,20 +131,18 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
               the last dimension 4 arrange as (x1, y1, x2, y2).
         """
         img_feats = self.extract_feat(batch_inputs)
-        head_inputs_dict = self.forward_transformer(img_feats,
-                                                    batch_data_samples)
+        head_inputs_dict = self.forward_transformer(img_feats, batch_data_samples)
         results_list = self.bbox_head.predict(
-            **head_inputs_dict,
-            rescale=rescale,
-            batch_data_samples=batch_data_samples)
+            **head_inputs_dict, rescale=rescale, batch_data_samples=batch_data_samples
+        )
         batch_data_samples = self.add_pred_to_datasample(
-            batch_data_samples, results_list)
+            batch_data_samples, results_list
+        )
         return batch_data_samples
 
     def _forward(
-            self,
-            batch_inputs: Tensor,
-            batch_data_samples: OptSampleList = None) -> Tuple[List[Tensor]]:
+        self, batch_inputs: Tensor, batch_data_samples: OptSampleList = None
+    ) -> Tuple[List[Tensor]]:
         """Network forward process. Usually includes backbone, neck and head
         forward without any post-processing.
 
@@ -159,14 +157,13 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
             tuple[Tensor]: A tuple of features from ``bbox_head`` forward.
         """
         img_feats = self.extract_feat(batch_inputs)
-        head_inputs_dict = self.forward_transformer(img_feats,
-                                                    batch_data_samples)
+        head_inputs_dict = self.forward_transformer(img_feats, batch_data_samples)
         results = self.bbox_head.forward(**head_inputs_dict)
         return results
 
-    def forward_transformer(self,
-                            img_feats: Tuple[Tensor],
-                            batch_data_samples: OptSampleList = None) -> Dict:
+    def forward_transformer(
+        self, img_feats: Tuple[Tensor], batch_data_samples: OptSampleList = None
+    ) -> Dict:
         """Forward process of Transformer, which includes four steps:
         'pre_transformer' -> 'encoder' -> 'pre_decoder' -> 'decoder'. We
         summarized the parameters flow of the existing DETR-like detector,
@@ -213,7 +210,8 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
             `references` including the initial and intermediate references.
         """
         encoder_inputs_dict, decoder_inputs_dict = self.pre_transformer(
-            img_feats, batch_data_samples)
+            img_feats, batch_data_samples
+        )
 
         encoder_outputs_dict = self.forward_encoder(**encoder_inputs_dict)
 
@@ -241,9 +239,8 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
 
     @abstractmethod
     def pre_transformer(
-            self,
-            img_feats: Tuple[Tensor],
-            batch_data_samples: OptSampleList = None) -> Tuple[Dict, Dict]:
+        self, img_feats: Tuple[Tensor], batch_data_samples: OptSampleList = None
+    ) -> Tuple[Dict, Dict]:
         """Process image features before feeding them to the transformer.
 
         Args:
@@ -265,11 +262,11 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
               `self.forward_decoder()`, which includes 'memory_mask', and
               other algorithm-specific arguments.
         """
-        pass
 
     @abstractmethod
-    def forward_encoder(self, feat: Tensor, feat_mask: Tensor,
-                        feat_pos: Tensor, **kwargs) -> Dict:
+    def forward_encoder(
+        self, feat: Tensor, feat_mask: Tensor, feat_pos: Tensor, **kwargs
+    ) -> Dict:
         """Forward with Transformer encoder.
 
         Args:
@@ -285,7 +282,6 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
             `memory` of the encoder output and other algorithm-specific
             arguments.
         """
-        pass
 
     @abstractmethod
     def pre_decoder(self, memory: Tensor, **kwargs) -> Tuple[Dict, Dict]:
@@ -308,11 +304,11 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
               `enc_outputs_class` and `enc_outputs_class` when the detector
               support 'two stage' or 'query selection' strategies.
         """
-        pass
 
     @abstractmethod
-    def forward_decoder(self, query: Tensor, query_pos: Tensor, memory: Tensor,
-                        **kwargs) -> Dict:
+    def forward_decoder(
+        self, query: Tensor, query_pos: Tensor, memory: Tensor, **kwargs
+    ) -> Dict:
         """Forward with Transformer decoder.
 
         Args:
@@ -329,4 +325,3 @@ class DetectionTransformer(BaseDetector, metaclass=ABCMeta):
             the initial and intermediate reference_points, and other
             algorithm-specific arguments.
         """
-        pass

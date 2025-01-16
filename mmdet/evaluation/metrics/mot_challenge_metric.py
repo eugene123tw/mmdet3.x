@@ -13,9 +13,14 @@ try:
     import trackeval
 except ImportError:
     trackeval = None
-from mmengine.dist import (all_gather_object, barrier, broadcast,
-                           broadcast_object_list, get_dist_info,
-                           is_main_process)
+from mmengine.dist import (
+    all_gather_object,
+    barrier,
+    broadcast,
+    broadcast_object_list,
+    get_dist_info,
+    is_main_process,
+)
 from mmengine.logging import MMLogger
 
 from mmdet.registry import METRICS, TASK_UTILS
@@ -27,11 +32,11 @@ def get_tmpdir() -> str:
     rank, world_size = get_dist_info()
     MAX_LEN = 512
     # 32 is whitespace
-    dir_tensor = torch.full((MAX_LEN, ), 32, dtype=torch.uint8)
+    dir_tensor = torch.full((MAX_LEN,), 32, dtype=torch.uint8)
     if rank == 0:
         tmpdir = tempfile.mkdtemp()
         tmpdir = torch.tensor(bytearray(tmpdir.encode()), dtype=torch.uint8)
-        dir_tensor[:len(tmpdir)] = tmpdir
+        dir_tensor[: len(tmpdir)] = tmpdir
     broadcast(dir_tensor, 0)
     tmpdir = dir_tensor.cpu().numpy().tobytes().decode().rstrip()
     return tmpdir
@@ -73,44 +78,48 @@ class MOTChallengeMetric(BaseVideoMetric):
             will be used instead. Default: None
     Returns:
     """
-    TRACKER = 'default-tracker'
-    allowed_metrics = ['HOTA', 'CLEAR', 'Identity']
-    allowed_benchmarks = ['MOT15', 'MOT16', 'MOT17', 'MOT20', 'DanceTrack']
-    default_prefix: Optional[str] = 'motchallenge-metric'
 
-    def __init__(self,
-                 metric: Union[str, List[str]] = ['HOTA', 'CLEAR', 'Identity'],
-                 outfile_prefix: Optional[str] = None,
-                 track_iou_thr: float = 0.5,
-                 benchmark: str = 'MOT17',
-                 format_only: bool = False,
-                 use_postprocess: bool = False,
-                 postprocess_tracklet_cfg: Optional[List[dict]] = [],
-                 collect_device: str = 'cpu',
-                 prefix: Optional[str] = None) -> None:
+    TRACKER = "default-tracker"
+    allowed_metrics = ["HOTA", "CLEAR", "Identity"]
+    allowed_benchmarks = ["MOT15", "MOT16", "MOT17", "MOT20", "DanceTrack"]
+    default_prefix: Optional[str] = "motchallenge-metric"
+
+    def __init__(
+        self,
+        metric: Union[str, List[str]] = ["HOTA", "CLEAR", "Identity"],
+        outfile_prefix: Optional[str] = None,
+        track_iou_thr: float = 0.5,
+        benchmark: str = "MOT17",
+        format_only: bool = False,
+        use_postprocess: bool = False,
+        postprocess_tracklet_cfg: Optional[List[dict]] = [],
+        collect_device: str = "cpu",
+        prefix: Optional[str] = None,
+    ) -> None:
         super().__init__(collect_device=collect_device, prefix=prefix)
         if trackeval is None:
             raise RuntimeError(
-                'trackeval is not installed,'
-                'please install it by: pip install'
-                'git+https://github.com/JonathonLuiten/TrackEval.git'
-                'trackeval need low version numpy, please install it'
-                'by: pip install -U numpy==1.23.5')
+                "trackeval is not installed,"
+                "please install it by: pip install"
+                "git+https://github.com/JonathonLuiten/TrackEval.git"
+                "trackeval need low version numpy, please install it"
+                "by: pip install -U numpy==1.23.5"
+            )
         if isinstance(metric, list):
             metrics = metric
         elif isinstance(metric, str):
             metrics = [metric]
         else:
-            raise TypeError('metric must be a list or a str.')
+            raise TypeError("metric must be a list or a str.")
         for metric in metrics:
             if metric not in self.allowed_metrics:
-                raise KeyError(f'metric {metric} is not supported.')
+                raise KeyError(f"metric {metric} is not supported.")
         self.metrics = metrics
         self.format_only = format_only
         if self.format_only:
-            assert outfile_prefix is not None, 'outfile_prefix must be not'
-            'None when format_only is True, otherwise the result files will'
-            'be saved to a temp directory which will be cleaned up at the end.'
+            assert outfile_prefix is not None, "outfile_prefix must be not"
+            "None when format_only is True, otherwise the result files will"
+            "be saved to a temp directory which will be cleaned up at the end."
         self.use_postprocess = use_postprocess
         self.postprocess_tracklet_cfg = postprocess_tracklet_cfg.copy()
         self.postprocess_tracklet_methods = [
@@ -122,12 +131,13 @@ class MOTChallengeMetric(BaseVideoMetric):
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.tmp_dir.name = get_tmpdir()
         self.seq_info = defaultdict(
-            lambda: dict(seq_length=-1, gt_tracks=[], pred_tracks=[]))
+            lambda: dict(seq_length=-1, gt_tracks=[], pred_tracks=[])
+        )
         self.gt_dir = self._get_gt_dir()
         self.pred_dir = self._get_pred_dir(outfile_prefix)
-        self.seqmap = osp.join(self.pred_dir, 'videoseq.txt')
-        with open(self.seqmap, 'w') as f:
-            f.write('name\n')
+        self.seqmap = osp.join(self.pred_dir, "videoseq.txt")
+        with open(self.seqmap, "w") as f:
+            f.write("name\n")
 
     def __del__(self):
         # To avoid tmpdir being cleaned up too early, because in multiple
@@ -143,7 +153,7 @@ class MOTChallengeMetric(BaseVideoMetric):
             outfile_prefix = self.tmp_dir.name
         else:
             if osp.exists(outfile_prefix) and is_main_process():
-                logger.info('remove previous results.')
+                logger.info("remove previous results.")
                 shutil.rmtree(outfile_prefix)
         pred_dir = osp.join(outfile_prefix, self.TRACKER)
         os.makedirs(pred_dir, exist_ok=True)
@@ -151,124 +161,144 @@ class MOTChallengeMetric(BaseVideoMetric):
 
     def _get_gt_dir(self):
         """Get directory to save the gt files."""
-        output_dir = osp.join(self.tmp_dir.name, 'gt')
+        output_dir = osp.join(self.tmp_dir.name, "gt")
         os.makedirs(output_dir, exist_ok=True)
         return output_dir
 
     def transform_gt_and_pred(self, img_data_sample, video, frame_id):
-
-        video = img_data_sample['img_path'].split(os.sep)[-3]
+        video = img_data_sample["img_path"].split(os.sep)[-3]
         # load gts
-        if 'instances' in img_data_sample:
-            gt_instances = img_data_sample['instances']
+        if "instances" in img_data_sample:
+            gt_instances = img_data_sample["instances"]
             gt_tracks = [
-                np.array([
-                    frame_id + 1, gt_instances[i]['instance_id'],
-                    gt_instances[i]['bbox'][0], gt_instances[i]['bbox'][1],
-                    gt_instances[i]['bbox'][2] - gt_instances[i]['bbox'][0],
-                    gt_instances[i]['bbox'][3] - gt_instances[i]['bbox'][1],
-                    gt_instances[i]['mot_conf'],
-                    gt_instances[i]['category_id'],
-                    gt_instances[i]['visibility']
-                ]) for i in range(len(gt_instances))
+                np.array(
+                    [
+                        frame_id + 1,
+                        gt_instances[i]["instance_id"],
+                        gt_instances[i]["bbox"][0],
+                        gt_instances[i]["bbox"][1],
+                        gt_instances[i]["bbox"][2] - gt_instances[i]["bbox"][0],
+                        gt_instances[i]["bbox"][3] - gt_instances[i]["bbox"][1],
+                        gt_instances[i]["mot_conf"],
+                        gt_instances[i]["category_id"],
+                        gt_instances[i]["visibility"],
+                    ]
+                )
+                for i in range(len(gt_instances))
             ]
-            self.seq_info[video]['gt_tracks'].extend(gt_tracks)
+            self.seq_info[video]["gt_tracks"].extend(gt_tracks)
 
         # load predictions
-        assert 'pred_track_instances' in img_data_sample
+        assert "pred_track_instances" in img_data_sample
         if self.use_postprocess:
-            pred_instances = img_data_sample['pred_track_instances']
+            pred_instances = img_data_sample["pred_track_instances"]
             pred_tracks = [
-                pred_instances['bboxes'][i]
-                for i in range(len(pred_instances['bboxes']))
+                pred_instances["bboxes"][i]
+                for i in range(len(pred_instances["bboxes"]))
             ]
         else:
-            pred_instances = img_data_sample['pred_track_instances']
+            pred_instances = img_data_sample["pred_track_instances"]
             pred_tracks = [
-                np.array([
-                    frame_id + 1, pred_instances['instances_id'][i].cpu(),
-                    pred_instances['bboxes'][i][0].cpu(),
-                    pred_instances['bboxes'][i][1].cpu(),
-                    (pred_instances['bboxes'][i][2] -
-                     pred_instances['bboxes'][i][0]).cpu(),
-                    (pred_instances['bboxes'][i][3] -
-                     pred_instances['bboxes'][i][1]).cpu(),
-                    pred_instances['scores'][i].cpu()
-                ]) for i in range(len(pred_instances['instances_id']))
+                np.array(
+                    [
+                        frame_id + 1,
+                        pred_instances["instances_id"][i].cpu(),
+                        pred_instances["bboxes"][i][0].cpu(),
+                        pred_instances["bboxes"][i][1].cpu(),
+                        (
+                            pred_instances["bboxes"][i][2]
+                            - pred_instances["bboxes"][i][0]
+                        ).cpu(),
+                        (
+                            pred_instances["bboxes"][i][3]
+                            - pred_instances["bboxes"][i][1]
+                        ).cpu(),
+                        pred_instances["scores"][i].cpu(),
+                    ]
+                )
+                for i in range(len(pred_instances["instances_id"]))
             ]
-        self.seq_info[video]['pred_tracks'].extend(pred_tracks)
+        self.seq_info[video]["pred_tracks"].extend(pred_tracks)
 
     def process_image(self, data_samples, video_len):
-
         img_data_sample = data_samples[0].to_dict()
-        video = img_data_sample['img_path'].split(os.sep)[-3]
-        frame_id = img_data_sample['frame_id']
-        if self.seq_info[video]['seq_length'] == -1:
-            self.seq_info[video]['seq_length'] = video_len
+        video = img_data_sample["img_path"].split(os.sep)[-3]
+        frame_id = img_data_sample["frame_id"]
+        if self.seq_info[video]["seq_length"] == -1:
+            self.seq_info[video]["seq_length"] = video_len
         self.transform_gt_and_pred(img_data_sample, video, frame_id)
 
         if frame_id == video_len - 1:
             # postprocessing
             if self.postprocess_tracklet_cfg:
                 info = self.seq_info[video]
-                pred_tracks = np.array(info['pred_tracks'])
-                for postprocess_tracklet_methods in \
-                        self.postprocess_tracklet_methods:
-                    pred_tracks = postprocess_tracklet_methods\
-                        .forward(pred_tracks)
-                info['pred_tracks'] = pred_tracks
+                pred_tracks = np.array(info["pred_tracks"])
+                for postprocess_tracklet_methods in self.postprocess_tracklet_methods:
+                    pred_tracks = postprocess_tracklet_methods.forward(pred_tracks)
+                info["pred_tracks"] = pred_tracks
             self._save_one_video_gts_preds(video)
 
     def process_video(self, data_samples):
-
         video_len = len(data_samples)
         for frame_id in range(video_len):
             img_data_sample = data_samples[frame_id].to_dict()
             # load basic info
-            video = img_data_sample['img_path'].split(os.sep)[-3]
-            if self.seq_info[video]['seq_length'] == -1:
-                self.seq_info[video]['seq_length'] = video_len
+            video = img_data_sample["img_path"].split(os.sep)[-3]
+            if self.seq_info[video]["seq_length"] == -1:
+                self.seq_info[video]["seq_length"] = video_len
             self.transform_gt_and_pred(img_data_sample, video, frame_id)
 
         if self.postprocess_tracklet_cfg:
             info = self.seq_info[video]
-            pred_tracks = np.array(info['pred_tracks'])
-            for postprocess_tracklet_methods in \
-                    self.postprocess_tracklet_methods:
-                pred_tracks = postprocess_tracklet_methods \
-                    .forward(pred_tracks)
-            info['pred_tracks'] = pred_tracks
+            pred_tracks = np.array(info["pred_tracks"])
+            for postprocess_tracklet_methods in self.postprocess_tracklet_methods:
+                pred_tracks = postprocess_tracklet_methods.forward(pred_tracks)
+            info["pred_tracks"] = pred_tracks
         self._save_one_video_gts_preds(video)
 
     def _save_one_video_gts_preds(self, seq: str) -> None:
         """Save the gt and prediction results."""
         info = self.seq_info[seq]
         # save predictions
-        pred_file = osp.join(self.pred_dir, seq + '.txt')
+        pred_file = osp.join(self.pred_dir, seq + ".txt")
 
-        pred_tracks = np.array(info['pred_tracks'])
+        pred_tracks = np.array(info["pred_tracks"])
 
-        with open(pred_file, 'wt') as f:
+        with open(pred_file, "wt") as f:
             for tracks in pred_tracks:
-                line = '%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,-1,-1,-1\n' % (
-                    tracks[0], tracks[1], tracks[2], tracks[3], tracks[4],
-                    tracks[5], tracks[6])
+                line = "%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,-1,-1,-1\n" % (
+                    tracks[0],
+                    tracks[1],
+                    tracks[2],
+                    tracks[3],
+                    tracks[4],
+                    tracks[5],
+                    tracks[6],
+                )
                 f.writelines(line)
 
-        info['pred_tracks'] = []
+        info["pred_tracks"] = []
         # save gts
-        if info['gt_tracks']:
-            gt_file = osp.join(self.gt_dir, seq + '.txt')
-            with open(gt_file, 'wt') as f:
-                for tracks in info['gt_tracks']:
-                    line = '%d,%d,%d,%d,%d,%d,%d,%d,%.5f\n' % (
-                        tracks[0], tracks[1], tracks[2], tracks[3], tracks[4],
-                        tracks[5], tracks[6], tracks[7], tracks[8])
+        if info["gt_tracks"]:
+            gt_file = osp.join(self.gt_dir, seq + ".txt")
+            with open(gt_file, "wt") as f:
+                for tracks in info["gt_tracks"]:
+                    line = "%d,%d,%d,%d,%d,%d,%d,%d,%.5f\n" % (
+                        tracks[0],
+                        tracks[1],
+                        tracks[2],
+                        tracks[3],
+                        tracks[4],
+                        tracks[5],
+                        tracks[6],
+                        tracks[7],
+                        tracks[8],
+                    )
                     f.writelines(line)
-            info['gt_tracks'].clear()
+            info["gt_tracks"].clear()
         # save seq info
-        with open(self.seqmap, 'a') as f:
-            f.write(seq + '\n')
+        with open(self.seqmap, "a") as f:
+            f.write(seq + "\n")
             f.close()
 
     def compute_metrics(self, results: list = None) -> dict:
@@ -300,40 +330,40 @@ class MOTChallengeMetric(BaseVideoMetric):
         evaluator = trackeval.Evaluator(eval_config)
         dataset = [trackeval.datasets.MotChallenge2DBox(dataset_config)]
         metrics = [
-            getattr(trackeval.metrics,
-                    metric)(dict(METRICS=[metric], THRESHOLD=0.5))
+            getattr(trackeval.metrics, metric)(dict(METRICS=[metric], THRESHOLD=0.5))
             for metric in self.metrics
         ]
         output_res, _ = evaluator.evaluate(dataset, metrics)
-        output_res = output_res['MotChallenge2DBox'][
-            self.TRACKER]['COMBINED_SEQ']['pedestrian']
+        output_res = output_res["MotChallenge2DBox"][self.TRACKER]["COMBINED_SEQ"][
+            "pedestrian"
+        ]
 
-        if 'HOTA' in self.metrics:
-            logger.info('Evaluating HOTA Metrics...')
-            eval_results['HOTA'] = np.average(output_res['HOTA']['HOTA'])
-            eval_results['AssA'] = np.average(output_res['HOTA']['AssA'])
-            eval_results['DetA'] = np.average(output_res['HOTA']['DetA'])
+        if "HOTA" in self.metrics:
+            logger.info("Evaluating HOTA Metrics...")
+            eval_results["HOTA"] = np.average(output_res["HOTA"]["HOTA"])
+            eval_results["AssA"] = np.average(output_res["HOTA"]["AssA"])
+            eval_results["DetA"] = np.average(output_res["HOTA"]["DetA"])
 
-        if 'CLEAR' in self.metrics:
-            logger.info('Evaluating CLEAR Metrics...')
-            eval_results['MOTA'] = np.average(output_res['CLEAR']['MOTA'])
-            eval_results['MOTP'] = np.average(output_res['CLEAR']['MOTP'])
-            eval_results['IDSW'] = np.average(output_res['CLEAR']['IDSW'])
-            eval_results['TP'] = np.average(output_res['CLEAR']['CLR_TP'])
-            eval_results['FP'] = np.average(output_res['CLEAR']['CLR_FP'])
-            eval_results['FN'] = np.average(output_res['CLEAR']['CLR_FN'])
-            eval_results['Frag'] = np.average(output_res['CLEAR']['Frag'])
-            eval_results['MT'] = np.average(output_res['CLEAR']['MT'])
-            eval_results['ML'] = np.average(output_res['CLEAR']['ML'])
+        if "CLEAR" in self.metrics:
+            logger.info("Evaluating CLEAR Metrics...")
+            eval_results["MOTA"] = np.average(output_res["CLEAR"]["MOTA"])
+            eval_results["MOTP"] = np.average(output_res["CLEAR"]["MOTP"])
+            eval_results["IDSW"] = np.average(output_res["CLEAR"]["IDSW"])
+            eval_results["TP"] = np.average(output_res["CLEAR"]["CLR_TP"])
+            eval_results["FP"] = np.average(output_res["CLEAR"]["CLR_FP"])
+            eval_results["FN"] = np.average(output_res["CLEAR"]["CLR_FN"])
+            eval_results["Frag"] = np.average(output_res["CLEAR"]["Frag"])
+            eval_results["MT"] = np.average(output_res["CLEAR"]["MT"])
+            eval_results["ML"] = np.average(output_res["CLEAR"]["ML"])
 
-        if 'Identity' in self.metrics:
-            logger.info('Evaluating Identity Metrics...')
-            eval_results['IDF1'] = np.average(output_res['Identity']['IDF1'])
-            eval_results['IDTP'] = np.average(output_res['Identity']['IDTP'])
-            eval_results['IDFN'] = np.average(output_res['Identity']['IDFN'])
-            eval_results['IDFP'] = np.average(output_res['Identity']['IDFP'])
-            eval_results['IDP'] = np.average(output_res['Identity']['IDP'])
-            eval_results['IDR'] = np.average(output_res['Identity']['IDR'])
+        if "Identity" in self.metrics:
+            logger.info("Evaluating Identity Metrics...")
+            eval_results["IDF1"] = np.average(output_res["Identity"]["IDF1"])
+            eval_results["IDTP"] = np.average(output_res["Identity"]["IDTP"])
+            eval_results["IDFN"] = np.average(output_res["Identity"]["IDFN"])
+            eval_results["IDFP"] = np.average(output_res["Identity"]["IDFP"])
+            eval_results["IDP"] = np.average(output_res["Identity"]["IDP"])
+            eval_results["IDR"] = np.average(output_res["Identity"]["IDR"])
 
         return eval_results
 
@@ -364,10 +394,7 @@ class MOTChallengeMetric(BaseVideoMetric):
             _metrics = self.compute_metrics()  # type: ignore
             # Add prefix to metric names
             if self.prefix:
-                _metrics = {
-                    '/'.join((self.prefix, k)): v
-                    for k, v in _metrics.items()
-                }
+                _metrics = {"/".join((self.prefix, k)): v for k, v in _metrics.items()}
             metrics = [_metrics]
         else:
             metrics = [None]  # type: ignore
@@ -399,24 +426,24 @@ class MOTChallengeMetric(BaseVideoMetric):
             # Use self.TRACKER as the default tracker
             TRACKERS_TO_EVAL=[self.TRACKER],
             # Option values: ['pedestrian']
-            CLASSES_TO_EVAL=['pedestrian'],
+            CLASSES_TO_EVAL=["pedestrian"],
             # Option Values: 'MOT15', 'MOT16', 'MOT17', 'MOT20', 'DanceTrack'
             BENCHMARK=self.benchmark,
             # Option Values: 'train', 'test'
-            SPLIT_TO_EVAL='val' if self.benchmark == 'DanceTrack' else 'train',
+            SPLIT_TO_EVAL="val" if self.benchmark == "DanceTrack" else "train",
             # Whether tracker input files are zipped
             INPUT_AS_ZIP=False,
             # Whether to print current config
             PRINT_CONFIG=True,
             # Whether to perform preprocessing
             # (never done for MOT15)
-            DO_PREPROC=False if self.benchmark == 'MOT15' else True,
+            DO_PREPROC=False if self.benchmark == "MOT15" else True,
             # Tracker files are in
             # TRACKER_FOLDER/tracker_name/TRACKER_SUB_FOLDER
-            TRACKER_SUB_FOLDER='',
+            TRACKER_SUB_FOLDER="",
             # Output files are saved in
             # OUTPUT_FOLDER/tracker_name/OUTPUT_SUB_FOLDER
-            OUTPUT_SUB_FOLDER='',
+            OUTPUT_SUB_FOLDER="",
             # Names of trackers to display
             # (if None: TRACKERS_TO_EVAL)
             TRACKER_DISPLAY_NAMES=None,
@@ -428,12 +455,9 @@ class MOTChallengeMetric(BaseVideoMetric):
             SEQMAP_FILE=self.seqmap,
             # If not None, specify sequences to eval
             # and their number of timesteps
-            SEQ_INFO={
-                seq: info['seq_length']
-                for seq, info in self.seq_info.items()
-            },
+            SEQ_INFO={seq: info["seq_length"] for seq, info in self.seq_info.items()},
             # '{gt_folder}/{seq}.txt'
-            GT_LOC_FORMAT='{gt_folder}/{seq}.txt',
+            GT_LOC_FORMAT="{gt_folder}/{seq}.txt",
             # If False, data is in GT_FOLDER/BENCHMARK-SPLIT_TO_EVAL/ and in
             # TRACKERS_FOLDER/BENCHMARK-SPLIT_TO_EVAL/tracker/
             # If True, the middle 'benchmark-split' folder is skipped for both.

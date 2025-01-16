@@ -5,9 +5,9 @@ with read_base():
 
 model.update(dict(encoder=dict(num_cp=6)))  # noqa
 
-runner_type = 'FlexibleRunner'
+runner_type = "FlexibleRunner"
 strategy = dict(
-    type='DeepSpeedStrategy',
+    type="DeepSpeedStrategy",
     gradient_clipping=0.1,
     fp16=dict(
         enabled=True,
@@ -18,7 +18,7 @@ strategy = dict(
         min_loss_scale=1,
         initial_scale_power=15,
     ),
-    inputs_to_half=['inputs'],
+    inputs_to_half=["inputs"],
     zero_optimization=dict(
         stage=3,
         allgather_partitions=True,
@@ -27,17 +27,20 @@ strategy = dict(
         reduce_bucket_size=50000000,
         overlap_comm=True,
         contiguous_gradients=True,
-        cpu_offload=False),
+        cpu_offload=False,
+    ),
 )
 
 optim_wrapper = dict(
-    type='DeepSpeedOptimWrapper',
+    type="DeepSpeedOptimWrapper",
     optimizer=dict(
-        type='AdamW',
+        type="AdamW",
         lr=0.0001,  # 0.0002 for DeformDETR
-        weight_decay=0.0001),
+        weight_decay=0.0001,
+    ),
     # clip_grad=dict(max_norm=0.1, norm_type=2),
-    paramwise_cfg=dict(custom_keys={'backbone': dict(lr_mult=0.1)}))
+    paramwise_cfg=dict(custom_keys={"backbone": dict(lr_mult=0.1)}),
+)
 
 # To debug
 default_hooks.update(dict(logger=dict(interval=1)))  # noqa

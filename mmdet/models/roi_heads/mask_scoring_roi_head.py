@@ -28,10 +28,12 @@ class MaskScoringRoIHead(StandardRoIHead):
         super().__init__(**kwargs)
         self.mask_iou_head = MODELS.build(mask_iou_head)
 
-    def forward(self,
-                x: Tuple[Tensor],
-                rpn_results_list: InstanceList,
-                batch_data_samples: SampleList = None) -> tuple:
+    def forward(
+        self,
+        x: Tuple[Tensor],
+        rpn_results_list: InstanceList,
+        batch_data_samples: SampleList = None,
+    ) -> tuple:
         """Network forward process. Usually includes backbone, neck and head
         forward without any post-processing.
 
@@ -54,28 +56,32 @@ class MaskScoringRoIHead(StandardRoIHead):
         # bbox head
         if self.with_bbox:
             bbox_results = self._bbox_forward(x, rois)
-            results = results + (bbox_results['cls_score'],
-                                 bbox_results['bbox_pred'])
+            results = results + (bbox_results["cls_score"], bbox_results["bbox_pred"])
         # mask head
         if self.with_mask:
             mask_rois = rois[:100]
             mask_results = self._mask_forward(x, mask_rois)
-            results = results + (mask_results['mask_preds'], )
+            results = results + (mask_results["mask_preds"],)
 
             # mask iou head
-            cls_score = bbox_results['cls_score'][:100]
-            mask_preds = mask_results['mask_preds']
-            mask_feats = mask_results['mask_feats']
-            _, labels = cls_score[:, :self.bbox_head.num_classes].max(dim=1)
+            cls_score = bbox_results["cls_score"][:100]
+            mask_preds = mask_results["mask_preds"]
+            mask_feats = mask_results["mask_feats"]
+            _, labels = cls_score[:, : self.bbox_head.num_classes].max(dim=1)
             mask_iou_preds = self.mask_iou_head(
-                mask_feats, mask_preds[range(labels.size(0)), labels])
-            results = results + (mask_iou_preds, )
+                mask_feats, mask_preds[range(labels.size(0)), labels]
+            )
+            results = results + (mask_iou_preds,)
 
         return results
 
-    def mask_loss(self, x: Tuple[Tensor],
-                  sampling_results: List[SamplingResult], bbox_feats,
-                  batch_gt_instances: InstanceList) -> dict:
+    def mask_loss(
+        self,
+        x: Tuple[Tensor],
+        sampling_results: List[SamplingResult],
+        bbox_feats,
+        batch_gt_instances: InstanceList,
+    ) -> dict:
         """Perform forward propagation and loss calculation of the mask head on
         the features of the upstream network.
 
@@ -106,49 +112,57 @@ class MaskScoringRoIHead(StandardRoIHead):
             for res in sampling_results:
                 pos_inds.append(
                     torch.ones(
-                        res.pos_priors.shape[0],
-                        device=device,
-                        dtype=torch.uint8))
+                        res.pos_priors.shape[0], device=device, dtype=torch.uint8
+                    )
+                )
                 pos_inds.append(
                     torch.zeros(
-                        res.neg_priors.shape[0],
-                        device=device,
-                        dtype=torch.uint8))
+                        res.neg_priors.shape[0], device=device, dtype=torch.uint8
+                    )
+                )
             pos_inds = torch.cat(pos_inds)
 
             mask_results = self._mask_forward(
-                x, pos_inds=pos_inds, bbox_feats=bbox_feats)
+                x, pos_inds=pos_inds, bbox_feats=bbox_feats
+            )
 
         mask_loss_and_target = self.mask_head.loss_and_target(
-            mask_preds=mask_results['mask_preds'],
+            mask_preds=mask_results["mask_preds"],
             sampling_results=sampling_results,
             batch_gt_instances=batch_gt_instances,
-            rcnn_train_cfg=self.train_cfg)
-        mask_targets = mask_loss_and_target['mask_targets']
-        mask_results.update(loss_mask=mask_loss_and_target['loss_mask'])
-        if mask_results['loss_mask'] is None:
+            rcnn_train_cfg=self.train_cfg,
+        )
+        mask_targets = mask_loss_and_target["mask_targets"]
+        mask_results.update(loss_mask=mask_loss_and_target["loss_mask"])
+        if mask_results["loss_mask"] is None:
             return mask_results
 
         # mask iou head forward and loss
         pos_labels = torch.cat([res.pos_gt_labels for res in sampling_results])
-        pos_mask_pred = mask_results['mask_preds'][
-            range(mask_results['mask_preds'].size(0)), pos_labels]
-        mask_iou_pred = self.mask_iou_head(mask_results['mask_feats'],
-                                           pos_mask_pred)
-        pos_mask_iou_pred = mask_iou_pred[range(mask_iou_pred.size(0)),
-                                          pos_labels]
+        pos_mask_pred = mask_results["mask_preds"][
+            range(mask_results["mask_preds"].size(0)), pos_labels
+        ]
+        mask_iou_pred = self.mask_iou_head(mask_results["mask_feats"], pos_mask_pred)
+        pos_mask_iou_pred = mask_iou_pred[range(mask_iou_pred.size(0)), pos_labels]
 
         loss_mask_iou = self.mask_iou_head.loss_and_target(
-            pos_mask_iou_pred, pos_mask_pred, mask_targets, sampling_results,
-            batch_gt_instances, self.train_cfg)
-        mask_results['loss_mask'].update(loss_mask_iou)
+            pos_mask_iou_pred,
+            pos_mask_pred,
+            mask_targets,
+            sampling_results,
+            batch_gt_instances,
+            self.train_cfg,
+        )
+        mask_results["loss_mask"].update(loss_mask_iou)
         return mask_results
 
-    def predict_mask(self,
-                     x: Tensor,
-                     batch_img_metas: List[dict],
-                     results_list: InstanceList,
-                     rescale: bool = False) -> InstanceList:
+    def predict_mask(
+        self,
+        x: Tensor,
+        batch_img_metas: List[dict],
+        results_list: InstanceList,
+        rescale: bool = False,
+    ) -> InstanceList:
         """Perform forward propagation of the mask head and predict detection
         results on the features of the upstream network.
 
@@ -179,18 +193,20 @@ class MaskScoringRoIHead(StandardRoIHead):
             results_list = empty_instances(
                 batch_img_metas,
                 mask_rois.device,
-                task_type='mask',
+                task_type="mask",
                 instance_results=results_list,
-                mask_thr_binary=self.test_cfg.mask_thr_binary)
+                mask_thr_binary=self.test_cfg.mask_thr_binary,
+            )
             return results_list
 
         mask_results = self._mask_forward(x, mask_rois)
-        mask_preds = mask_results['mask_preds']
-        mask_feats = mask_results['mask_feats']
+        mask_preds = mask_results["mask_preds"]
+        mask_feats = mask_results["mask_feats"]
         # get mask scores with mask iou head
         labels = torch.cat([res.labels for res in results_list])
         mask_iou_preds = self.mask_iou_head(
-            mask_feats, mask_preds[range(labels.size(0)), labels])
+            mask_feats, mask_preds[range(labels.size(0)), labels]
+        )
         # split batch mask prediction back to each image
         num_mask_rois_per_img = [len(res) for res in results_list]
         mask_preds = mask_preds.split(num_mask_rois_per_img, 0)
@@ -202,7 +218,9 @@ class MaskScoringRoIHead(StandardRoIHead):
             results_list=results_list,
             batch_img_metas=batch_img_metas,
             rcnn_test_cfg=self.test_cfg,
-            rescale=rescale)
+            rescale=rescale,
+        )
         results_list = self.mask_iou_head.predict_by_feat(
-            mask_iou_preds=mask_iou_preds, results_list=results_list)
+            mask_iou_preds=mask_iou_preds, results_list=results_list
+        )
         return results_list

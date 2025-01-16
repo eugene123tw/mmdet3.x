@@ -5,8 +5,7 @@ from functools import partial
 from glob import glob
 
 import numpy as np
-from mmengine.utils import (mkdir_or_exist, track_parallel_progress,
-                            track_progress)
+from mmengine.utils import mkdir_or_exist, track_parallel_progress, track_progress
 from PIL import Image
 
 COCO_LEN = 123287
@@ -183,7 +182,7 @@ clsID_to_trID = {
     179: 168,
     180: 169,
     181: 170,
-    255: 255
+    255: 255,
 }
 
 
@@ -192,25 +191,23 @@ def convert_to_trainID(maskpath, out_mask_dir, is_train):
     mask_copy = mask.copy()
     for clsID, trID in clsID_to_trID.items():
         mask_copy[mask == clsID] = trID
-    seg_filename = osp.join(out_mask_dir, 'train2017',
-                            osp.basename(maskpath)) if is_train else osp.join(
-                                out_mask_dir, 'val2017',
-                                osp.basename(maskpath))
-    Image.fromarray(mask_copy).save(seg_filename, 'PNG')
+    seg_filename = (
+        osp.join(out_mask_dir, "train2017", osp.basename(maskpath))
+        if is_train
+        else osp.join(out_mask_dir, "val2017", osp.basename(maskpath))
+    )
+    Image.fromarray(mask_copy).save(seg_filename, "PNG")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description=\
-        'Convert COCO Stuff 164k annotations to mmdet format')  # noqa
-    parser.add_argument('coco_path', help='coco stuff path')
+        description="Convert COCO Stuff 164k annotations to mmdet format"
+    )  # noqa
+    parser.add_argument("coco_path", help="coco stuff path")
     parser.add_argument(
-        '--out-dir-name',
-        '-o',
-        default='stuffthingmaps_semseg',
-        help='output path')
-    parser.add_argument(
-        '--nproc', default=16, type=int, help='number of process')
+        "--out-dir-name", "-o", default="stuffthingmaps_semseg", help="output path"
+    )
+    parser.add_argument("--nproc", default=16, type=int, help="number of process")
     args = parser.parse_args()
     return args
 
@@ -221,34 +218,36 @@ def main():
     out_dir = osp.join(coco_path, args.out_dir_name)
     nproc = args.nproc
 
-    mkdir_or_exist(osp.join(out_dir, 'train2017'))
-    mkdir_or_exist(osp.join(out_dir, 'val2017'))
+    mkdir_or_exist(osp.join(out_dir, "train2017"))
+    mkdir_or_exist(osp.join(out_dir, "val2017"))
 
-    train_list = glob(osp.join(coco_path, 'stuffthingmaps/train2017', '*.png'))
-    val_list = glob(osp.join(coco_path, 'stuffthingmaps/val2017', '*.png'))
-    assert (len(train_list) +
-            len(val_list)) == COCO_LEN, 'Wrong length of list {} & {}'.format(
-                len(train_list), len(val_list))
+    train_list = glob(osp.join(coco_path, "stuffthingmaps/train2017", "*.png"))
+    val_list = glob(osp.join(coco_path, "stuffthingmaps/val2017", "*.png"))
+    assert (
+        len(train_list) + len(val_list)
+    ) == COCO_LEN, "Wrong length of list {} & {}".format(len(train_list), len(val_list))
 
     if args.nproc > 1:
         track_parallel_progress(
             partial(convert_to_trainID, out_mask_dir=out_dir, is_train=True),
             train_list,
-            nproc=nproc)
+            nproc=nproc,
+        )
         track_parallel_progress(
             partial(convert_to_trainID, out_mask_dir=out_dir, is_train=False),
             val_list,
-            nproc=nproc)
+            nproc=nproc,
+        )
     else:
         track_progress(
-            partial(convert_to_trainID, out_mask_dir=out_dir, is_train=True),
-            train_list)
+            partial(convert_to_trainID, out_mask_dir=out_dir, is_train=True), train_list
+        )
         track_progress(
-            partial(convert_to_trainID, out_mask_dir=out_dir, is_train=False),
-            val_list)
+            partial(convert_to_trainID, out_mask_dir=out_dir, is_train=False), val_list
+        )
 
-    print('Done!')
+    print("Done!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

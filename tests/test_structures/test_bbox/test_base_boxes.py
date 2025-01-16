@@ -8,7 +8,6 @@ from .utils import ToyBaseBoxes
 
 
 class TestBaseBoxes(TestCase):
-
     def test_init(self):
         box_tensor = torch.rand((3, 4, 4))
         boxes = ToyBaseBoxes(box_tensor)
@@ -17,11 +16,11 @@ class TestBaseBoxes(TestCase):
         self.assertEqual(boxes.tensor.dtype, torch.float64)
 
         if torch.cuda.is_available():
-            boxes = ToyBaseBoxes(box_tensor, device='cuda')
+            boxes = ToyBaseBoxes(box_tensor, device="cuda")
             self.assertTrue(boxes.tensor.is_cuda)
 
         with self.assertRaises(AssertionError):
-            box_tensor = torch.rand((4, ))
+            box_tensor = torch.rand((4,))
             boxes = ToyBaseBoxes(box_tensor)
 
         with self.assertRaises(AssertionError):
@@ -145,11 +144,11 @@ class TestBaseBoxes(TestCase):
         new_boxes = boxes.to(torch.uint8)
         self.assertEqual(new_boxes.tensor.dtype, torch.uint8)
         if torch.cuda.is_available():
-            new_boxes = boxes.to(device='cuda')
+            new_boxes = boxes.to(device="cuda")
             self.assertTrue(new_boxes.tensor.is_cuda)
         # cpu
         if torch.cuda.is_available():
-            new_boxes = boxes.to(device='cuda')
+            new_boxes = boxes.to(device="cuda")
             new_boxes = new_boxes.cpu()
             self.assertFalse(new_boxes.tensor.is_cuda)
         # cuda
@@ -272,5 +271,5 @@ class TestBaseBoxes(TestCase):
         new_boxes = boxes.fake_boxes((3, 4, 4), dtype=torch.uint8)
         self.assertEqual(new_boxes.dtype, torch.uint8)
         if torch.cuda.is_available():
-            new_boxes = boxes.fake_boxes((3, 4, 4), device='cuda')
+            new_boxes = boxes.fake_boxes((3, 4, 4), device="cuda")
             self.assertTrue(new_boxes.tensor.is_cuda)

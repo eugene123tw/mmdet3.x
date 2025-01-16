@@ -12,7 +12,7 @@ from mmengine.fileio import get
 def _parse_label_file(label_file):
     index_list = []
     classes_names = []
-    with open(label_file, 'r') as f:
+    with open(label_file, "r") as f:
         reader = csv.reader(f)
         for line in reader:
             classes_names.append(line[1])
@@ -31,8 +31,8 @@ backend_args = None
 
 
 def oi2odvg(args):
-    ann_file = osp.join(args.input_dir, 'oidv6-train-annotations-bbox.csv')
-    label_file = osp.join(args.input_dir, 'class-descriptions-boxable.csv')
+    ann_file = osp.join(args.input_dir, "oidv6-train-annotations-bbox.csv")
+    label_file = osp.join(args.input_dir, "class-descriptions-boxable.csv")
 
     classes_names, index_mapping = _parse_label_file(label_file)
 
@@ -42,16 +42,15 @@ def oi2odvg(args):
         label_map[str(idx)] = class_name
 
     if args.out_ann is None:
-        output = osp.join(args.input_dir, 'openimages_label_map.json')
+        output = osp.join(args.input_dir, "openimages_label_map.json")
     else:
-        output = osp.join(
-            osp.dirname(args.out_ann), 'openimages_label_map.json')
-    with open(output, 'w') as f:
+        output = osp.join(osp.dirname(args.out_ann), "openimages_label_map.json")
+    with open(output, "w") as f:
         json.dump(label_map, f)
 
     metas = []
     skip_count = 0
-    with open(ann_file, 'r') as f:
+    with open(ann_file, "r") as f:
         reader = csv.reader(f)
         last_img_id = None
         _filename_shape = [0, 0]
@@ -64,14 +63,14 @@ def oi2odvg(args):
                 last_img_id = img_id
             label_id = line[2]
 
-            filename = f'{img_id}.jpg'
+            filename = f"{img_id}.jpg"
             label = index_mapping[label_id]
             category = label_map[str(label)]
             bbox = [
                 float(line[4]),  # xmin
                 float(line[6]),  # ymin
                 float(line[5]),  # xmax
-                float(line[7])  # ymax
+                float(line[7]),  # ymax
             ]
 
             # is_occluded = True if int(line[8]) == 1 else False
@@ -83,7 +82,7 @@ def oi2odvg(args):
             # if any([is_occluded, is_truncated, is_group_of,
             # is_depiction, is_inside]):
             if is_group_of:
-                print(f'skip {filename} of one instance')
+                print(f"skip {filename} of one instance")
                 skip_count += 1
                 continue
 
@@ -91,11 +90,12 @@ def oi2odvg(args):
             if filename != _filename_shape[0]:
                 if args.img_prefix is not None:
                     _filename = osp.join(
-                        osp.dirname(args.input_dir), args.img_prefix, filename)
+                        osp.dirname(args.input_dir), args.img_prefix, filename
+                    )
                 else:
                     _filename = osp.join(osp.dirname(args.input_dir), filename)
                 img_bytes = get(_filename, backend_args)
-                img = imfrombytes(img_bytes, flag='color')
+                img = imfrombytes(img_bytes, flag="color")
                 shape = img.shape
                 _filename_shape = [filename, shape]
             else:
@@ -106,7 +106,7 @@ def oi2odvg(args):
                 max(bbox[0] * w, 0),
                 max(bbox[1] * h, 0),
                 min(bbox[2] * w, w),
-                min(bbox[3] * h, h)
+                min(bbox[3] * h, h),
             ]
 
             x1, y1, x2, y2 = bbox
@@ -118,28 +118,26 @@ def oi2odvg(args):
                 continue
 
             instance = {
-                'filename': filename,
-                'height': h,
-                'width': w,
-                'bbox': bbox,
-                'label': label,
-                'category': category
+                "filename": filename,
+                "height": h,
+                "width": w,
+                "bbox": bbox,
+                "label": label,
+                "category": category,
             }
 
             if img_id != last_img_id:
                 copy_instances = copy.deepcopy(instances)
                 for copy_instance in copy_instances:
-                    _filename = copy_instance.pop('filename')
-                    _h = copy_instance.pop('height')
-                    _w = copy_instance.pop('width')
+                    _filename = copy_instance.pop("filename")
+                    _h = copy_instance.pop("height")
+                    _w = copy_instance.pop("width")
 
                 meta_ifo = {
-                    'filename': _filename,
-                    'height': _h,
-                    'width': _w,
-                    'detection': {
-                        'instances': copy_instances
-                    }
+                    "filename": _filename,
+                    "height": _h,
+                    "width": _w,
+                    "detection": {"instances": copy_instances},
                 }
                 metas.append(meta_ifo)
                 instances = []
@@ -147,41 +145,39 @@ def oi2odvg(args):
             last_img_id = img_id
 
         for instance in instances:
-            _filename = instance.pop('filename')
-            _h = instance.pop('height')
-            _w = instance.pop('width')
+            _filename = instance.pop("filename")
+            _h = instance.pop("height")
+            _w = instance.pop("width")
         meta_ifo = {
-            'filename': _filename,
-            'height': _h,
-            'width': _w,
-            'detection': {
-                'instances': instances
-            }
+            "filename": _filename,
+            "height": _h,
+            "width": _w,
+            "detection": {"instances": instances},
         }
         metas.append(meta_ifo)
 
     if args.out_ann is None:
-        out_path = osp.join(args.input_dir, 'oidv6-train-annotations_od.json')
+        out_path = osp.join(args.input_dir, "oidv6-train-annotations_od.json")
     else:
         out_path = args.out_ann
 
-    with jsonlines.open(out_path, mode='w') as writer:
+    with jsonlines.open(out_path, mode="w") as writer:
         writer.write_all(metas)
 
-    print('skip {} instances'.format(skip_count))
-    print('save to {}'.format(out_path))
+    print("skip {} instances".format(skip_count))
+    print("save to {}".format(out_path))
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        'openimages to odvg format.', add_help=True)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser("openimages to odvg format.", add_help=True)
     parser.add_argument(
-        '--input-dir',
-        default='data/OpenImages/annotations',
+        "--input-dir",
+        default="data/OpenImages/annotations",
         type=str,
-        help='input list name')
-    parser.add_argument('--img-prefix', default='OpenImages/train/')
-    parser.add_argument('--out-ann', '-o', type=str)
+        help="input list name",
+    )
+    parser.add_argument("--img-prefix", default="OpenImages/train/")
+    parser.add_argument("--out-ann", "-o", type=str)
     args = parser.parse_args()
 
     oi2odvg(args)

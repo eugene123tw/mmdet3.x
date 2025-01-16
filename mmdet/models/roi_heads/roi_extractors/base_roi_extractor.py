@@ -23,11 +23,13 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
             dict], optional): Initialization config dict. Defaults to None.
     """
 
-    def __init__(self,
-                 roi_layer: ConfigType,
-                 out_channels: int,
-                 featmap_strides: List[int],
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        roi_layer: ConfigType,
+        out_channels: int,
+        featmap_strides: List[int],
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super().__init__(init_cfg=init_cfg)
         self.roi_layers = self.build_roi_layers(roi_layer, featmap_strides)
         self.out_channels = out_channels
@@ -38,8 +40,9 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         """int: Number of input feature maps."""
         return len(self.featmap_strides)
 
-    def build_roi_layers(self, layer_cfg: ConfigType,
-                         featmap_strides: List[int]) -> nn.ModuleList:
+    def build_roi_layers(
+        self, layer_cfg: ConfigType, featmap_strides: List[int]
+    ) -> nn.ModuleList:
         """Build RoI operator to extract feature from each level feature map.
 
         Args:
@@ -57,14 +60,15 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         """
 
         cfg = layer_cfg.copy()
-        layer_type = cfg.pop('type')
+        layer_type = cfg.pop("type")
         if isinstance(layer_type, str):
             assert hasattr(ops, layer_type)
             layer_cls = getattr(ops, layer_type)
         else:
             layer_cls = layer_type
         roi_layers = nn.ModuleList(
-            [layer_cls(spatial_scale=1 / s, **cfg) for s in featmap_strides])
+            [layer_cls(spatial_scale=1 / s, **cfg) for s in featmap_strides]
+        )
         return roi_layers
 
     def roi_rescale(self, rois: Tensor, scale_factor: float) -> Tensor:
@@ -92,10 +96,12 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         return new_rois
 
     @abstractmethod
-    def forward(self,
-                feats: Tuple[Tensor],
-                rois: Tensor,
-                roi_scale_factor: Optional[float] = None) -> Tensor:
+    def forward(
+        self,
+        feats: Tuple[Tensor],
+        rois: Tensor,
+        roi_scale_factor: Optional[float] = None,
+    ) -> Tensor:
         """Extractor ROI feats.
 
         Args:
@@ -108,4 +114,3 @@ class BaseRoIExtractor(BaseModule, metaclass=ABCMeta):
         Returns:
             Tensor: RoI feature.
         """
-        pass

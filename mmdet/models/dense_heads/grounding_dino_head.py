@@ -39,28 +39,33 @@ class ContrastiveEmbed(nn.Module):
           Defaults to False.
     """
 
-    def __init__(self,
-                 max_text_len: int = 256,
-                 log_scale: Optional[Union[str, float]] = None,
-                 bias: bool = False):
+    def __init__(
+        self,
+        max_text_len: int = 256,
+        log_scale: Optional[Union[str, float]] = None,
+        bias: bool = False,
+    ):
         super().__init__()
         self.max_text_len = max_text_len
         self.log_scale = log_scale
         if isinstance(log_scale, float):
             self.log_scale = nn.Parameter(
-                torch.Tensor([float(log_scale)]), requires_grad=True)
-        elif log_scale not in ['auto', 'none', None]:
-            raise ValueError(f'log_scale should be one of '
-                             f'"auto", "none", None, but got {log_scale}')
+                torch.Tensor([float(log_scale)]), requires_grad=True
+            )
+        elif log_scale not in ["auto", "none", None]:
+            raise ValueError(
+                f"log_scale should be one of "
+                f'"auto", "none", None, but got {log_scale}'
+            )
 
         self.bias = None
         if bias:
             bias_value = -math.log((1 - 0.01) / 0.01)
-            self.bias = nn.Parameter(
-                torch.Tensor([bias_value]), requires_grad=True)
+            self.bias = nn.Parameter(torch.Tensor([bias_value]), requires_grad=True)
 
-    def forward(self, visual_feat: Tensor, text_feat: Tensor,
-                text_token_mask: Tensor) -> Tensor:
+    def forward(
+        self, visual_feat: Tensor, text_feat: Tensor, text_token_mask: Tensor
+    ) -> Tensor:
         """Forward function.
 
         Args:
@@ -74,17 +79,17 @@ class ContrastiveEmbed(nn.Module):
         res = visual_feat @ text_feat.transpose(-1, -2)
         if isinstance(self.log_scale, nn.Parameter):
             res = res * self.log_scale.exp()
-        elif self.log_scale == 'auto':
+        elif self.log_scale == "auto":
             # NOTE: similar to the normalizer in self-attention
             res = res / math.sqrt(visual_feat.shape[-1])
         if self.bias is not None:
             res = res + self.bias
-        res.masked_fill_(~text_token_mask[:, None, :], float('-inf'))
+        res.masked_fill_(~text_token_mask[:, None, :], float("-inf"))
 
-        new_res = torch.full((*res.shape[:-1], self.max_text_len),
-                             float('-inf'),
-                             device=res.device)
-        new_res[..., :res.shape[-1]] = res
+        new_res = torch.full(
+            (*res.shape[:-1], self.max_text_len), float("-inf"), device=res.device
+        )
+        new_res[..., : res.shape[-1]] = res
 
         return new_res
 
@@ -101,7 +106,7 @@ class GroundingDINOHead(DINOHead):
 
     def __init__(self, contrastive_cfg=dict(max_text_len=256), **kwargs):
         self.contrastive_cfg = contrastive_cfg
-        self.max_text_len = contrastive_cfg.get('max_text_len', 256)
+        self.max_text_len = contrastive_cfg.get("max_text_len", 256)
         super().__init__(**kwargs)
 
     def _init_layers(self) -> None:
@@ -118,15 +123,18 @@ class GroundingDINOHead(DINOHead):
         # have any trainable parameters,we do not need to copy it.
         if self.share_pred_layer:
             self.cls_branches = nn.ModuleList(
-                [fc_cls for _ in range(self.num_pred_layer)])
+                [fc_cls for _ in range(self.num_pred_layer)]
+            )
             self.reg_branches = nn.ModuleList(
-                [reg_branch for _ in range(self.num_pred_layer)])
+                [reg_branch for _ in range(self.num_pred_layer)]
+            )
         else:
             self.cls_branches = nn.ModuleList(
-                [copy.deepcopy(fc_cls) for _ in range(self.num_pred_layer)])
-            self.reg_branches = nn.ModuleList([
-                copy.deepcopy(reg_branch) for _ in range(self.num_pred_layer)
-            ])
+                [copy.deepcopy(fc_cls) for _ in range(self.num_pred_layer)]
+            )
+            self.reg_branches = nn.ModuleList(
+                [copy.deepcopy(reg_branch) for _ in range(self.num_pred_layer)]
+            )
 
     def init_weights(self) -> None:
         """Initialize weights of the Deformable DETR head."""
@@ -137,9 +145,13 @@ class GroundingDINOHead(DINOHead):
             for m in self.reg_branches:
                 nn.init.constant_(m[-1].bias.data[2:], 0.0)
 
-    def _get_targets_single(self, cls_score: Tensor, bbox_pred: Tensor,
-                            gt_instances: InstanceData,
-                            img_meta: dict) -> tuple:
+    def _get_targets_single(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        gt_instances: InstanceData,
+        img_meta: dict,
+    ) -> tuple:
         """Compute regression and classification targets for one image.
 
         Outputs from a single decoder layer of a single feature level are used.
@@ -165,9 +177,8 @@ class GroundingDINOHead(DINOHead):
             - pos_inds (Tensor): Sampled positive indices for each image.
             - neg_inds (Tensor): Sampled negative indices for each image.
         """
-        img_h, img_w = img_meta['img_shape']
-        factor = bbox_pred.new_tensor([img_w, img_h, img_w,
-                                       img_h]).unsqueeze(0)
+        img_h, img_w = img_meta["img_shape"]
+        factor = bbox_pred.new_tensor([img_w, img_h, img_w, img_h]).unsqueeze(0)
         num_bboxes = bbox_pred.size(0)
         # convert bbox_pred from xywh, normalized to xyxy, unnormalized
         bbox_pred = bbox_cxcywh_to_xyxy(bbox_pred)
@@ -176,23 +187,28 @@ class GroundingDINOHead(DINOHead):
         pred_instances = InstanceData(scores=cls_score, bboxes=bbox_pred)
         # assigner and sampler
         assign_result = self.assigner.assign(
-            pred_instances=pred_instances,
-            gt_instances=gt_instances,
-            img_meta=img_meta)
+            pred_instances=pred_instances, gt_instances=gt_instances, img_meta=img_meta
+        )
         gt_bboxes = gt_instances.bboxes
 
-        pos_inds = torch.nonzero(
-            assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
-        neg_inds = torch.nonzero(
-            assign_result.gt_inds == 0, as_tuple=False).squeeze(-1).unique()
+        pos_inds = (
+            torch.nonzero(assign_result.gt_inds > 0, as_tuple=False)
+            .squeeze(-1)
+            .unique()
+        )
+        neg_inds = (
+            torch.nonzero(assign_result.gt_inds == 0, as_tuple=False)
+            .squeeze(-1)
+            .unique()
+        )
         pos_assigned_gt_inds = assign_result.gt_inds[pos_inds] - 1
         pos_gt_bboxes = gt_bboxes[pos_assigned_gt_inds.long(), :]
 
         # Major changes. The labels are 0-1 binary labels for each bbox
         # and text tokens.
-        labels = gt_bboxes.new_full((num_bboxes, self.max_text_len),
-                                    0,
-                                    dtype=torch.float32)
+        labels = gt_bboxes.new_full(
+            (num_bboxes, self.max_text_len), 0, dtype=torch.float32
+        )
         labels[pos_inds] = gt_instances.positive_maps[pos_assigned_gt_inds]
         label_weights = gt_bboxes.new_ones(num_bboxes)
 
@@ -207,8 +223,7 @@ class GroundingDINOHead(DINOHead):
         pos_gt_bboxes_normalized = pos_gt_bboxes / factor
         pos_gt_bboxes_targets = bbox_xyxy_to_cxcywh(pos_gt_bboxes_normalized)
         bbox_targets[pos_inds] = pos_gt_bboxes_targets
-        return (labels, label_weights, bbox_targets, bbox_weights, pos_inds,
-                neg_inds)
+        return (labels, label_weights, bbox_targets, bbox_weights, pos_inds, neg_inds)
 
     def forward(
         self,
@@ -255,9 +270,9 @@ class GroundingDINOHead(DINOHead):
             reference = inverse_sigmoid(references[layer_id])
             # NOTE The last reference will not be used.
             hidden_state = hidden_states[layer_id]
-            outputs_class = self.cls_branches[layer_id](hidden_state,
-                                                        memory_text,
-                                                        text_token_mask)
+            outputs_class = self.cls_branches[layer_id](
+                hidden_state, memory_text, text_token_mask
+            )
             tmp_reg_preds = self.reg_branches[layer_id](hidden_state)
             if reference.shape[-1] == 4:
                 # When `layer` is 0 and `as_two_stage` of the detector
@@ -279,13 +294,15 @@ class GroundingDINOHead(DINOHead):
 
         return all_layers_outputs_classes, all_layers_outputs_coords
 
-    def predict(self,
-                hidden_states: Tensor,
-                references: List[Tensor],
-                memory_text: Tensor,
-                text_token_mask: Tensor,
-                batch_data_samples: SampleList,
-                rescale: bool = True) -> InstanceList:
+    def predict(
+        self,
+        hidden_states: Tensor,
+        references: List[Tensor],
+        memory_text: Tensor,
+        text_token_mask: Tensor,
+        batch_data_samples: SampleList,
+        rescale: bool = True,
+    ) -> InstanceList:
         """Perform forward propagation and loss calculation of the detection
         head on the queries of the upstream network.
 
@@ -316,12 +333,9 @@ class GroundingDINOHead(DINOHead):
             InstanceList: Detection results of each image
                 after the post process.
         """
-        batch_img_metas = [
-            data_samples.metainfo for data_samples in batch_data_samples
-        ]
+        batch_img_metas = [data_samples.metainfo for data_samples in batch_data_samples]
         batch_token_positive_maps = [
-            data_samples.token_positive_map
-            for data_samples in batch_data_samples
+            data_samples.token_positive_map for data_samples in batch_data_samples
         ]
 
         outs = self(hidden_states, references, memory_text, text_token_mask)
@@ -330,15 +344,18 @@ class GroundingDINOHead(DINOHead):
             *outs,
             batch_img_metas=batch_img_metas,
             batch_token_positive_maps=batch_token_positive_maps,
-            rescale=rescale)
+            rescale=rescale,
+        )
         return predictions
 
-    def predict_by_feat(self,
-                        all_layers_cls_scores: Tensor,
-                        all_layers_bbox_preds: Tensor,
-                        batch_img_metas: List[Dict],
-                        batch_token_positive_maps: Optional[List[dict]] = None,
-                        rescale: bool = False) -> InstanceList:
+    def predict_by_feat(
+        self,
+        all_layers_cls_scores: Tensor,
+        all_layers_bbox_preds: Tensor,
+        batch_img_metas: List[Dict],
+        batch_token_positive_maps: Optional[List[dict]] = None,
+        rescale: bool = False,
+    ) -> InstanceList:
         """Transform a batch of output features extracted from the head into
         bbox results.
 
@@ -375,18 +392,20 @@ class GroundingDINOHead(DINOHead):
             bbox_pred = bbox_preds[img_id]
             img_meta = batch_img_metas[img_id]
             token_positive_maps = batch_token_positive_maps[img_id]
-            results = self._predict_by_feat_single(cls_score, bbox_pred,
-                                                   token_positive_maps,
-                                                   img_meta, rescale)
+            results = self._predict_by_feat_single(
+                cls_score, bbox_pred, token_positive_maps, img_meta, rescale
+            )
             result_list.append(results)
         return result_list
 
-    def _predict_by_feat_single(self,
-                                cls_score: Tensor,
-                                bbox_pred: Tensor,
-                                token_positive_maps: dict,
-                                img_meta: dict,
-                                rescale: bool = True) -> InstanceData:
+    def _predict_by_feat_single(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        token_positive_maps: dict,
+        img_meta: dict,
+        rescale: bool = True,
+    ) -> InstanceData:
         """Transform a single image's features extracted from the head into
         bbox results.
 
@@ -414,13 +433,13 @@ class GroundingDINOHead(DINOHead):
                   the last dimension 4 arrange as (x1, y1, x2, y2).
         """
         assert len(cls_score) == len(bbox_pred)  # num_queries
-        max_per_img = self.test_cfg.get('max_per_img', len(cls_score))
-        img_shape = img_meta['img_shape']
+        max_per_img = self.test_cfg.get("max_per_img", len(cls_score))
+        img_shape = img_meta["img_shape"]
 
         if token_positive_maps is not None:
             cls_score = convert_grounding_to_cls_scores(
-                logits=cls_score.sigmoid()[None],
-                positive_maps=[token_positive_maps])[0]
+                logits=cls_score.sigmoid()[None], positive_maps=[token_positive_maps]
+            )[0]
             scores, indexes = cls_score.view(-1).topk(max_per_img)
             num_classes = cls_score.shape[-1]
             det_labels = indexes % num_classes
@@ -439,19 +458,25 @@ class GroundingDINOHead(DINOHead):
         det_bboxes[:, 0::2].clamp_(min=0, max=img_shape[1])
         det_bboxes[:, 1::2].clamp_(min=0, max=img_shape[0])
         if rescale:
-            assert img_meta.get('scale_factor') is not None
-            det_bboxes /= det_bboxes.new_tensor(
-                img_meta['scale_factor']).repeat((1, 2))
+            assert img_meta.get("scale_factor") is not None
+            det_bboxes /= det_bboxes.new_tensor(img_meta["scale_factor"]).repeat((1, 2))
         results = InstanceData()
         results.bboxes = det_bboxes
         results.scores = scores
         results.labels = det_labels
         return results
 
-    def loss(self, hidden_states: Tensor, references: List[Tensor],
-             memory_text: Tensor, text_token_mask: Tensor,
-             enc_outputs_class: Tensor, enc_outputs_coord: Tensor,
-             batch_data_samples: SampleList, dn_meta: Dict[str, int]) -> dict:
+    def loss(
+        self,
+        hidden_states: Tensor,
+        references: List[Tensor],
+        memory_text: Tensor,
+        text_token_mask: Tensor,
+        enc_outputs_class: Tensor,
+        enc_outputs_coord: Tensor,
+        batch_data_samples: SampleList,
+        dn_meta: Dict[str, int],
+    ) -> dict:
         """Perform forward propagation and loss calculation of the detection
         head on the queries of the upstream network.
 
@@ -494,14 +519,23 @@ class GroundingDINOHead(DINOHead):
 
         outs = self(hidden_states, references, memory_text, text_token_mask)
         self.text_masks = text_token_mask
-        loss_inputs = outs + (enc_outputs_class, enc_outputs_coord,
-                              batch_gt_instances, batch_img_metas, dn_meta)
+        loss_inputs = outs + (
+            enc_outputs_class,
+            enc_outputs_coord,
+            batch_gt_instances,
+            batch_img_metas,
+            dn_meta,
+        )
         losses = self.loss_by_feat(*loss_inputs)
         return losses
 
-    def loss_by_feat_single(self, cls_scores: Tensor, bbox_preds: Tensor,
-                            batch_gt_instances: InstanceList,
-                            batch_img_metas: List[dict]) -> Tuple[Tensor]:
+    def loss_by_feat_single(
+        self,
+        cls_scores: Tensor,
+        bbox_preds: Tensor,
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+    ) -> Tuple[Tensor]:
         """Loss function for outputs from a single decoder layer of a single
         feature level.
 
@@ -525,12 +559,17 @@ class GroundingDINOHead(DINOHead):
         cls_scores_list = [cls_scores[i] for i in range(num_imgs)]
         bbox_preds_list = [bbox_preds[i] for i in range(num_imgs)]
         with torch.no_grad():
-            cls_reg_targets = self.get_targets(cls_scores_list,
-                                               bbox_preds_list,
-                                               batch_gt_instances,
-                                               batch_img_metas)
-        (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
-         num_total_pos, num_total_neg) = cls_reg_targets
+            cls_reg_targets = self.get_targets(
+                cls_scores_list, bbox_preds_list, batch_gt_instances, batch_img_metas
+            )
+        (
+            labels_list,
+            label_weights_list,
+            bbox_targets_list,
+            bbox_weights_list,
+            num_total_pos,
+            num_total_neg,
+        ) = cls_reg_targets
         labels = torch.stack(labels_list, 0)
         label_weights = torch.stack(label_weights_list, 0)
         bbox_targets = torch.cat(bbox_targets_list, 0)
@@ -538,34 +577,34 @@ class GroundingDINOHead(DINOHead):
 
         # ===== this change =====
         # Loss is not computed for the padded regions of the text.
-        assert (self.text_masks.dim() == 2)
+        assert self.text_masks.dim() == 2
         text_masks = self.text_masks.new_zeros(
-            (self.text_masks.size(0), self.max_text_len))
-        text_masks[:, :self.text_masks.size(1)] = self.text_masks
+            (self.text_masks.size(0), self.max_text_len)
+        )
+        text_masks[:, : self.text_masks.size(1)] = self.text_masks
         text_mask = (text_masks > 0).unsqueeze(1)
         text_mask = text_mask.repeat(1, cls_scores.size(1), 1)
         cls_scores = torch.masked_select(cls_scores, text_mask).contiguous()
 
         labels = torch.masked_select(labels, text_mask)
-        label_weights = label_weights[...,
-                                      None].repeat(1, 1, text_mask.size(-1))
+        label_weights = label_weights[..., None].repeat(1, 1, text_mask.size(-1))
         label_weights = torch.masked_select(label_weights, text_mask)
 
         # classification loss
         # construct weighted avg_factor to match with the official DETR repo
-        cls_avg_factor = num_total_pos * 1.0 + \
-            num_total_neg * self.bg_cls_weight
+        cls_avg_factor = num_total_pos * 1.0 + num_total_neg * self.bg_cls_weight
         if self.sync_cls_avg_factor:
-            cls_avg_factor = reduce_mean(
-                cls_scores.new_tensor([cls_avg_factor]))
+            cls_avg_factor = reduce_mean(cls_scores.new_tensor([cls_avg_factor]))
         cls_avg_factor = max(cls_avg_factor, 1)
 
         if isinstance(self.loss_cls, QualityFocalLoss):
             raise NotImplementedError(
-                'QualityFocalLoss for GroundingDINOHead is not supported yet.')
+                "QualityFocalLoss for GroundingDINOHead is not supported yet."
+            )
         else:
             loss_cls = self.loss_cls(
-                cls_scores, labels, label_weights, avg_factor=cls_avg_factor)
+                cls_scores, labels, label_weights, avg_factor=cls_avg_factor
+            )
 
         # Compute the average number of gt boxes across all gpus, for
         # normalization purposes
@@ -575,10 +614,15 @@ class GroundingDINOHead(DINOHead):
         # construct factors used for rescale bboxes
         factors = []
         for img_meta, bbox_pred in zip(batch_img_metas, bbox_preds):
-            img_h, img_w, = img_meta['img_shape']
-            factor = bbox_pred.new_tensor([img_w, img_h, img_w,
-                                           img_h]).unsqueeze(0).repeat(
-                                               bbox_pred.size(0), 1)
+            (
+                img_h,
+                img_w,
+            ) = img_meta["img_shape"]
+            factor = (
+                bbox_pred.new_tensor([img_w, img_h, img_w, img_h])
+                .unsqueeze(0)
+                .repeat(bbox_pred.size(0), 1)
+            )
             factors.append(factor)
         factors = torch.cat(factors, 0)
 
@@ -591,17 +635,23 @@ class GroundingDINOHead(DINOHead):
 
         # regression IoU loss, defaultly GIoU loss
         loss_iou = self.loss_iou(
-            bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos)
+            bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos
+        )
 
         # regression L1 loss
         loss_bbox = self.loss_bbox(
-            bbox_preds, bbox_targets, bbox_weights, avg_factor=num_total_pos)
+            bbox_preds, bbox_targets, bbox_weights, avg_factor=num_total_pos
+        )
         return loss_cls, loss_bbox, loss_iou
 
-    def _loss_dn_single(self, dn_cls_scores: Tensor, dn_bbox_preds: Tensor,
-                        batch_gt_instances: InstanceList,
-                        batch_img_metas: List[dict],
-                        dn_meta: Dict[str, int]) -> Tuple[Tensor]:
+    def _loss_dn_single(
+        self,
+        dn_cls_scores: Tensor,
+        dn_bbox_preds: Tensor,
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+        dn_meta: Dict[str, int],
+    ) -> Tuple[Tensor]:
         """Denoising loss for outputs from a single decoder layer.
 
         Args:
@@ -626,50 +676,52 @@ class GroundingDINOHead(DINOHead):
             Tuple[Tensor]: A tuple including `loss_cls`, `loss_box` and
             `loss_iou`.
         """
-        cls_reg_targets = self.get_dn_targets(batch_gt_instances,
-                                              batch_img_metas, dn_meta)
-        (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
-         num_total_pos, num_total_neg) = cls_reg_targets
+        cls_reg_targets = self.get_dn_targets(
+            batch_gt_instances, batch_img_metas, dn_meta
+        )
+        (
+            labels_list,
+            label_weights_list,
+            bbox_targets_list,
+            bbox_weights_list,
+            num_total_pos,
+            num_total_neg,
+        ) = cls_reg_targets
         labels = torch.stack(labels_list, 0)
         label_weights = torch.stack(label_weights_list, 0)
         bbox_targets = torch.cat(bbox_targets_list, 0)
         bbox_weights = torch.cat(bbox_weights_list, 0)
         # ===== this change =====
         # Loss is not computed for the padded regions of the text.
-        assert (self.text_masks.dim() == 2)
+        assert self.text_masks.dim() == 2
         text_masks = self.text_masks.new_zeros(
-            (self.text_masks.size(0), self.max_text_len))
-        text_masks[:, :self.text_masks.size(1)] = self.text_masks
+            (self.text_masks.size(0), self.max_text_len)
+        )
+        text_masks[:, : self.text_masks.size(1)] = self.text_masks
         text_mask = (text_masks > 0).unsqueeze(1)
         text_mask = text_mask.repeat(1, dn_cls_scores.size(1), 1)
         cls_scores = torch.masked_select(dn_cls_scores, text_mask).contiguous()
         labels = torch.masked_select(labels, text_mask)
-        label_weights = label_weights[...,
-                                      None].repeat(1, 1, text_mask.size(-1))
+        label_weights = label_weights[..., None].repeat(1, 1, text_mask.size(-1))
         label_weights = torch.masked_select(label_weights, text_mask)
         # =======================
 
         # classification loss
         # construct weighted avg_factor to match with the official DETR repo
-        cls_avg_factor = \
-            num_total_pos * 1.0 + num_total_neg * self.bg_cls_weight
+        cls_avg_factor = num_total_pos * 1.0 + num_total_neg * self.bg_cls_weight
         if self.sync_cls_avg_factor:
-            cls_avg_factor = reduce_mean(
-                cls_scores.new_tensor([cls_avg_factor]))
+            cls_avg_factor = reduce_mean(cls_scores.new_tensor([cls_avg_factor]))
         cls_avg_factor = max(cls_avg_factor, 1)
 
         if len(cls_scores) > 0:
             if isinstance(self.loss_cls, QualityFocalLoss):
-                raise NotImplementedError('QualityFocalLoss is not supported')
+                raise NotImplementedError("QualityFocalLoss is not supported")
             else:
                 loss_cls = self.loss_cls(
-                    cls_scores,
-                    labels,
-                    label_weights,
-                    avg_factor=cls_avg_factor)
+                    cls_scores, labels, label_weights, avg_factor=cls_avg_factor
+                )
         else:
-            loss_cls = torch.zeros(
-                1, dtype=cls_scores.dtype, device=cls_scores.device)
+            loss_cls = torch.zeros(1, dtype=cls_scores.dtype, device=cls_scores.device)
 
         # Compute the average number of gt boxes across all gpus, for
         # normalization purposes
@@ -679,10 +731,12 @@ class GroundingDINOHead(DINOHead):
         # construct factors used for rescale bboxes
         factors = []
         for img_meta, bbox_pred in zip(batch_img_metas, dn_bbox_preds):
-            img_h, img_w = img_meta['img_shape']
-            factor = bbox_pred.new_tensor([img_w, img_h, img_w,
-                                           img_h]).unsqueeze(0).repeat(
-                                               bbox_pred.size(0), 1)
+            img_h, img_w = img_meta["img_shape"]
+            factor = (
+                bbox_pred.new_tensor([img_w, img_h, img_w, img_h])
+                .unsqueeze(0)
+                .repeat(bbox_pred.size(0), 1)
+            )
             factors.append(factor)
         factors = torch.cat(factors)
 
@@ -695,16 +749,18 @@ class GroundingDINOHead(DINOHead):
 
         # regression IoU loss, defaultly GIoU loss
         loss_iou = self.loss_iou(
-            bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos)
+            bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos
+        )
 
         # regression L1 loss
         loss_bbox = self.loss_bbox(
-            bbox_preds, bbox_targets, bbox_weights, avg_factor=num_total_pos)
+            bbox_preds, bbox_targets, bbox_weights, avg_factor=num_total_pos
+        )
         return loss_cls, loss_bbox, loss_iou
 
-    def _get_dn_targets_single(self, gt_instances: InstanceData,
-                               img_meta: dict, dn_meta: Dict[str,
-                                                             int]) -> tuple:
+    def _get_dn_targets_single(
+        self, gt_instances: InstanceData, img_meta: dict, dn_meta: Dict[str, int]
+    ) -> tuple:
         """Get targets in denoising part for one image.
 
         Args:
@@ -729,8 +785,8 @@ class GroundingDINOHead(DINOHead):
         """
         gt_bboxes = gt_instances.bboxes
         gt_labels = gt_instances.labels
-        num_groups = dn_meta['num_denoising_groups']
-        num_denoising_queries = dn_meta['num_denoising_queries']
+        num_groups = dn_meta["num_denoising_groups"]
+        num_denoising_queries = dn_meta["num_denoising_queries"]
         num_queries_each_group = int(num_denoising_queries / num_groups)
         device = gt_bboxes.device
 
@@ -738,20 +794,18 @@ class GroundingDINOHead(DINOHead):
             t = torch.arange(len(gt_labels), dtype=torch.long, device=device)
             t = t.unsqueeze(0).repeat(num_groups, 1)
             pos_assigned_gt_inds = t.flatten()
-            pos_inds = torch.arange(
-                num_groups, dtype=torch.long, device=device)
+            pos_inds = torch.arange(num_groups, dtype=torch.long, device=device)
             pos_inds = pos_inds.unsqueeze(1) * num_queries_each_group + t
             pos_inds = pos_inds.flatten()
         else:
-            pos_inds = pos_assigned_gt_inds = \
-                gt_bboxes.new_tensor([], dtype=torch.long)
+            pos_inds = pos_assigned_gt_inds = gt_bboxes.new_tensor([], dtype=torch.long)
 
         neg_inds = pos_inds + num_queries_each_group // 2
         # label targets
         # this change
-        labels = gt_bboxes.new_full((num_denoising_queries, self.max_text_len),
-                                    0,
-                                    dtype=torch.float32)
+        labels = gt_bboxes.new_full(
+            (num_denoising_queries, self.max_text_len), 0, dtype=torch.float32
+        )
         labels[pos_inds] = gt_instances.positive_maps[pos_assigned_gt_inds]
         label_weights = gt_bboxes.new_ones(num_denoising_queries)
 
@@ -759,16 +813,14 @@ class GroundingDINOHead(DINOHead):
         bbox_targets = torch.zeros(num_denoising_queries, 4, device=device)
         bbox_weights = torch.zeros(num_denoising_queries, 4, device=device)
         bbox_weights[pos_inds] = 1.0
-        img_h, img_w = img_meta['img_shape']
+        img_h, img_w = img_meta["img_shape"]
 
         # DETR regress the relative position of boxes (cxcywh) in the image.
         # Thus the learning target should be normalized by the image size, also
         # the box format should be converted from defaultly x1y1x2y2 to cxcywh.
-        factor = gt_bboxes.new_tensor([img_w, img_h, img_w,
-                                       img_h]).unsqueeze(0)
+        factor = gt_bboxes.new_tensor([img_w, img_h, img_w, img_h]).unsqueeze(0)
         gt_bboxes_normalized = gt_bboxes / factor
         gt_bboxes_targets = bbox_xyxy_to_cxcywh(gt_bboxes_normalized)
         bbox_targets[pos_inds] = gt_bboxes_targets.repeat([num_groups, 1])
 
-        return (labels, label_weights, bbox_targets, bbox_weights, pos_inds,
-                neg_inds)
+        return (labels, label_weights, bbox_targets, bbox_weights, pos_inds, neg_inds)

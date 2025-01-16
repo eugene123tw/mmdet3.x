@@ -10,7 +10,14 @@ from .tensorflow.yxyx_bbox_coder import YXYXDeltaXYWHBBoxCoder
 from .utils import Conv2dSamePadding
 
 __all__ = [
-    'EfficientDet', 'BiFPN', 'HuberLoss', 'EfficientDetSepBNHead',
-    'Conv2dSamePadding', 'Coco90Dataset', 'Coco90Metric',
-    'YXYXAnchorGenerator', 'TransMaxIoUAssigner', 'YXYXDeltaXYWHBBoxCoder'
+    "EfficientDet",
+    "BiFPN",
+    "HuberLoss",
+    "EfficientDetSepBNHead",
+    "Conv2dSamePadding",
+    "Coco90Dataset",
+    "Coco90Metric",
+    "YXYXAnchorGenerator",
+    "TransMaxIoUAssigner",
+    "YXYXDeltaXYWHBBoxCoder",
 ]

@@ -40,24 +40,33 @@ class ColorTransform(BaseTransform):
             Defaults to 1.9.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.1,
-                 max_mag: float = 1.9) -> None:
-        assert 0 <= prob <= 1.0, f'The probability of the transformation ' \
-                                 f'should be in range [0,1], got {prob}.'
-        assert level is None or isinstance(level, int), \
-            f'The level should be None or type int, got {type(level)}.'
-        assert level is None or 0 <= level <= _MAX_LEVEL, \
-            f'The level should be in range [0,{_MAX_LEVEL}], got {level}.'
-        assert isinstance(min_mag, float), \
-            f'min_mag should be type float, got {type(min_mag)}.'
-        assert isinstance(max_mag, float), \
-            f'max_mag should be type float, got {type(max_mag)}.'
-        assert min_mag <= max_mag, \
-            f'min_mag should smaller than max_mag, ' \
-            f'got min_mag={min_mag} and max_mag={max_mag}'
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.1,
+        max_mag: float = 1.9,
+    ) -> None:
+        assert 0 <= prob <= 1.0, (
+            f"The probability of the transformation "
+            f"should be in range [0,1], got {prob}."
+        )
+        assert level is None or isinstance(
+            level, int
+        ), f"The level should be None or type int, got {type(level)}."
+        assert (
+            level is None or 0 <= level <= _MAX_LEVEL
+        ), f"The level should be in range [0,{_MAX_LEVEL}], got {level}."
+        assert isinstance(
+            min_mag, float
+        ), f"min_mag should be type float, got {type(min_mag)}."
+        assert isinstance(
+            max_mag, float
+        ), f"max_mag should be type float, got {type(max_mag)}."
+        assert min_mag <= max_mag, (
+            f"min_mag should smaller than max_mag, "
+            f"got min_mag={min_mag} and max_mag={max_mag}"
+        )
         self.prob = prob
         self.level = level
         self.min_mag = min_mag
@@ -65,7 +74,6 @@ class ColorTransform(BaseTransform):
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Transform the image."""
-        pass
 
     @cache_randomness
     def _random_disable(self):
@@ -95,10 +103,10 @@ class ColorTransform(BaseTransform):
 
     def __repr__(self) -> str:
         repr_str = self.__class__.__name__
-        repr_str += f'(prob={self.prob}, '
-        repr_str += f'level={self.level}, '
-        repr_str += f'min_mag={self.min_mag}, '
-        repr_str += f'max_mag={self.max_mag})'
+        repr_str += f"(prob={self.prob}, "
+        repr_str += f"level={self.level}, "
+        repr_str += f"min_mag={self.min_mag}, "
+        repr_str += f"max_mag={self.max_mag})"
         return repr_str
 
 
@@ -129,23 +137,26 @@ class Color(ColorTransform):
             Defaults to 1.9.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.1,
-                 max_mag: float = 1.9) -> None:
-        assert 0. <= min_mag <= 2.0, \
-            f'min_mag for Color should be in range [0,2], got {min_mag}.'
-        assert 0. <= max_mag <= 2.0, \
-            f'max_mag for Color should be in range [0,2], got {max_mag}.'
-        super().__init__(
-            prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.1,
+        max_mag: float = 1.9,
+    ) -> None:
+        assert (
+            0.0 <= min_mag <= 2.0
+        ), f"min_mag for Color should be in range [0,2], got {min_mag}."
+        assert (
+            0.0 <= max_mag <= 2.0
+        ), f"max_mag for Color should be in range [0,2], got {max_mag}."
+        super().__init__(prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Apply Color transformation to image."""
         # NOTE defaultly the image should be BGR format
-        img = results['img']
-        results['img'] = mmcv.adjust_color(img, mag).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.adjust_color(img, mag).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -174,22 +185,25 @@ class Brightness(ColorTransform):
             Defaults to 1.9.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.1,
-                 max_mag: float = 1.9) -> None:
-        assert 0. <= min_mag <= 2.0, \
-            f'min_mag for Brightness should be in range [0,2], got {min_mag}.'
-        assert 0. <= max_mag <= 2.0, \
-            f'max_mag for Brightness should be in range [0,2], got {max_mag}.'
-        super().__init__(
-            prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.1,
+        max_mag: float = 1.9,
+    ) -> None:
+        assert (
+            0.0 <= min_mag <= 2.0
+        ), f"min_mag for Brightness should be in range [0,2], got {min_mag}."
+        assert (
+            0.0 <= max_mag <= 2.0
+        ), f"max_mag for Brightness should be in range [0,2], got {max_mag}."
+        super().__init__(prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Adjust the brightness of image."""
-        img = results['img']
-        results['img'] = mmcv.adjust_brightness(img, mag).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.adjust_brightness(img, mag).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -218,22 +232,25 @@ class Contrast(ColorTransform):
             Defaults to 1.9.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.1,
-                 max_mag: float = 1.9) -> None:
-        assert 0. <= min_mag <= 2.0, \
-            f'min_mag for Contrast should be in range [0,2], got {min_mag}.'
-        assert 0. <= max_mag <= 2.0, \
-            f'max_mag for Contrast should be in range [0,2], got {max_mag}.'
-        super().__init__(
-            prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.1,
+        max_mag: float = 1.9,
+    ) -> None:
+        assert (
+            0.0 <= min_mag <= 2.0
+        ), f"min_mag for Contrast should be in range [0,2], got {min_mag}."
+        assert (
+            0.0 <= max_mag <= 2.0
+        ), f"max_mag for Contrast should be in range [0,2], got {max_mag}."
+        super().__init__(prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Adjust the image contrast."""
-        img = results['img']
-        results['img'] = mmcv.adjust_contrast(img, mag).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.adjust_contrast(img, mag).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -262,22 +279,25 @@ class Sharpness(ColorTransform):
             Defaults to 1.9.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.1,
-                 max_mag: float = 1.9) -> None:
-        assert 0. <= min_mag <= 2.0, \
-            f'min_mag for Sharpness should be in range [0,2], got {min_mag}.'
-        assert 0. <= max_mag <= 2.0, \
-            f'max_mag for Sharpness should be in range [0,2], got {max_mag}.'
-        super().__init__(
-            prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.1,
+        max_mag: float = 1.9,
+    ) -> None:
+        assert (
+            0.0 <= min_mag <= 2.0
+        ), f"min_mag for Sharpness should be in range [0,2], got {min_mag}."
+        assert (
+            0.0 <= max_mag <= 2.0
+        ), f"max_mag for Sharpness should be in range [0,2], got {max_mag}."
+        super().__init__(prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Adjust the image sharpness."""
-        img = results['img']
-        results['img'] = mmcv.adjust_sharpness(img, mag).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.adjust_sharpness(img, mag).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -305,22 +325,25 @@ class Solarize(ColorTransform):
             Defaults to 256.0.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.0,
-                 max_mag: float = 256.0) -> None:
-        assert 0. <= min_mag <= 256.0, f'min_mag for Solarize should be ' \
-                                       f'in range [0, 256], got {min_mag}.'
-        assert 0. <= max_mag <= 256.0, f'max_mag for Solarize should be ' \
-                                       f'in range [0, 256], got {max_mag}.'
-        super().__init__(
-            prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.0,
+        max_mag: float = 256.0,
+    ) -> None:
+        assert 0.0 <= min_mag <= 256.0, (
+            f"min_mag for Solarize should be " f"in range [0, 256], got {min_mag}."
+        )
+        assert 0.0 <= max_mag <= 256.0, (
+            f"max_mag for Solarize should be " f"in range [0, 256], got {max_mag}."
+        )
+        super().__init__(prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Invert all pixel values above magnitude."""
-        img = results['img']
-        results['img'] = mmcv.solarize(img, mag).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.solarize(img, mag).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -348,23 +371,26 @@ class SolarizeAdd(ColorTransform):
             Defaults to 110.0.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.0,
-                 max_mag: float = 110.0) -> None:
-        assert 0. <= min_mag <= 110.0, f'min_mag for SolarizeAdd should be ' \
-                                       f'in range [0, 110], got {min_mag}.'
-        assert 0. <= max_mag <= 110.0, f'max_mag for SolarizeAdd should be ' \
-                                       f'in range [0, 110], got {max_mag}.'
-        super().__init__(
-            prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.0,
+        max_mag: float = 110.0,
+    ) -> None:
+        assert 0.0 <= min_mag <= 110.0, (
+            f"min_mag for SolarizeAdd should be " f"in range [0, 110], got {min_mag}."
+        )
+        assert 0.0 <= max_mag <= 110.0, (
+            f"max_mag for SolarizeAdd should be " f"in range [0, 110], got {max_mag}."
+        )
+        super().__init__(prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """SolarizeAdd the image."""
-        img = results['img']
+        img = results["img"]
         img_solarized = np.where(img < 128, np.minimum(img + mag, 255), img)
-        results['img'] = img_solarized.astype(img.dtype)
+        results["img"] = img_solarized.astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -391,22 +417,25 @@ class Posterize(ColorTransform):
             Defaults to 4.0.
     """
 
-    def __init__(self,
-                 prob: float = 1.0,
-                 level: Optional[int] = None,
-                 min_mag: float = 0.0,
-                 max_mag: float = 4.0) -> None:
-        assert 0. <= min_mag <= 8.0, f'min_mag for Posterize should be ' \
-                                     f'in range [0, 8], got {min_mag}.'
-        assert 0. <= max_mag <= 8.0, f'max_mag for Posterize should be ' \
-                                     f'in range [0, 8], got {max_mag}.'
-        super().__init__(
-            prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
+    def __init__(
+        self,
+        prob: float = 1.0,
+        level: Optional[int] = None,
+        min_mag: float = 0.0,
+        max_mag: float = 4.0,
+    ) -> None:
+        assert 0.0 <= min_mag <= 8.0, (
+            f"min_mag for Posterize should be " f"in range [0, 8], got {min_mag}."
+        )
+        assert 0.0 <= max_mag <= 8.0, (
+            f"max_mag for Posterize should be " f"in range [0, 8], got {max_mag}."
+        )
+        super().__init__(prob=prob, level=level, min_mag=min_mag, max_mag=max_mag)
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Posterize the image."""
-        img = results['img']
-        results['img'] = mmcv.posterize(img, math.ceil(mag)).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.posterize(img, math.ceil(mag)).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -433,8 +462,8 @@ class Equalize(ColorTransform):
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Equalizes the histogram of one image."""
-        img = results['img']
-        results['img'] = mmcv.imequalize(img).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.imequalize(img).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -462,8 +491,8 @@ class AutoContrast(ColorTransform):
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Auto adjust image contrast."""
-        img = results['img']
-        results['img'] = mmcv.auto_contrast(img).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.auto_contrast(img).astype(img.dtype)
 
 
 @TRANSFORMS.register_module()
@@ -489,5 +518,5 @@ class Invert(ColorTransform):
 
     def _transform_img(self, results: dict, mag: float) -> None:
         """Invert the image."""
-        img = results['img']
-        results['img'] = mmcv.iminvert(img).astype(img.dtype)
+        img = results["img"]
+        results["img"] = mmcv.iminvert(img).astype(img.dtype)

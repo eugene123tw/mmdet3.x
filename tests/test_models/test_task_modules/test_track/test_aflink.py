@@ -9,13 +9,12 @@ from mmdet.registry import TASK_UTILS
 
 
 class TestAppearanceFreeLink(TestCase):
-
     @classmethod
     def setUpClass(cls):
-        init_default_scope('mmdet')
+        init_default_scope("mmdet")
         cls.cfg = dict(
-            type='AppearanceFreeLink',
-            checkpoint='',
+            type="AppearanceFreeLink",
+            checkpoint="",
             temporal_threshold=(0, 30),
             spatial_threshold=75,
             confidence_threshold=0.95,

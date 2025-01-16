@@ -20,8 +20,9 @@ class MultiInstanceRoIHead(StandardRoIHead):
         self.num_instance = num_instance
         super().__init__(*args, **kwargs)
 
-    def init_bbox_head(self, bbox_roi_extractor: ConfigType,
-                       bbox_head: ConfigType) -> None:
+    def init_bbox_head(
+        self, bbox_roi_extractor: ConfigType, bbox_head: ConfigType
+    ) -> None:
         """Initialize box head and box roi extractor.
 
         Args:
@@ -51,7 +52,8 @@ class MultiInstanceRoIHead(StandardRoIHead):
         """
         # TODO: a more flexible way to decide which feature maps to use
         bbox_feats = self.bbox_roi_extractor(
-            x[:self.bbox_roi_extractor.num_inputs], rois)
+            x[: self.bbox_roi_extractor.num_inputs], rois
+        )
         bbox_results = self.bbox_head(bbox_feats)
 
         if self.bbox_head.with_refine:
@@ -60,17 +62,20 @@ class MultiInstanceRoIHead(StandardRoIHead):
                 bbox_pred=bbox_results[1],
                 cls_score_ref=bbox_results[2],
                 bbox_pred_ref=bbox_results[3],
-                bbox_feats=bbox_feats)
+                bbox_feats=bbox_feats,
+            )
         else:
             bbox_results = dict(
                 cls_score=bbox_results[0],
                 bbox_pred=bbox_results[1],
-                bbox_feats=bbox_feats)
+                bbox_feats=bbox_feats,
+            )
 
         return bbox_results
 
-    def bbox_loss(self, x: Tuple[Tensor],
-                  sampling_results: List[SamplingResult]) -> dict:
+    def bbox_loss(
+        self, x: Tuple[Tensor], sampling_results: List[SamplingResult]
+    ) -> dict:
         """Perform forward propagation and loss calculation of the bbox head on
         the features of the upstream network.
 
@@ -90,35 +95,43 @@ class MultiInstanceRoIHead(StandardRoIHead):
         bbox_results = self._bbox_forward(x, rois)
 
         # If there is a refining process, add refine loss.
-        if 'cls_score_ref' in bbox_results:
+        if "cls_score_ref" in bbox_results:
             bbox_loss_and_target = self.bbox_head.loss_and_target(
-                cls_score=bbox_results['cls_score'],
-                bbox_pred=bbox_results['bbox_pred'],
+                cls_score=bbox_results["cls_score"],
+                bbox_pred=bbox_results["bbox_pred"],
                 rois=rois,
                 sampling_results=sampling_results,
-                rcnn_train_cfg=self.train_cfg)
-            bbox_results.update(loss_bbox=bbox_loss_and_target['loss_bbox'])
+                rcnn_train_cfg=self.train_cfg,
+            )
+            bbox_results.update(loss_bbox=bbox_loss_and_target["loss_bbox"])
             bbox_loss_and_target_ref = self.bbox_head.loss_and_target(
-                cls_score=bbox_results['cls_score_ref'],
-                bbox_pred=bbox_results['bbox_pred_ref'],
+                cls_score=bbox_results["cls_score_ref"],
+                bbox_pred=bbox_results["bbox_pred_ref"],
                 rois=rois,
                 sampling_results=sampling_results,
-                rcnn_train_cfg=self.train_cfg)
-            bbox_results['loss_bbox']['loss_rcnn_emd_ref'] = \
-                bbox_loss_and_target_ref['loss_bbox']['loss_rcnn_emd']
+                rcnn_train_cfg=self.train_cfg,
+            )
+            bbox_results["loss_bbox"]["loss_rcnn_emd_ref"] = bbox_loss_and_target_ref[
+                "loss_bbox"
+            ]["loss_rcnn_emd"]
         else:
             bbox_loss_and_target = self.bbox_head.loss_and_target(
-                cls_score=bbox_results['cls_score'],
-                bbox_pred=bbox_results['bbox_pred'],
+                cls_score=bbox_results["cls_score"],
+                bbox_pred=bbox_results["bbox_pred"],
                 rois=rois,
                 sampling_results=sampling_results,
-                rcnn_train_cfg=self.train_cfg)
-            bbox_results.update(loss_bbox=bbox_loss_and_target['loss_bbox'])
+                rcnn_train_cfg=self.train_cfg,
+            )
+            bbox_results.update(loss_bbox=bbox_loss_and_target["loss_bbox"])
 
         return bbox_results
 
-    def loss(self, x: Tuple[Tensor], rpn_results_list: InstanceList,
-             batch_data_samples: List[DetDataSample]) -> dict:
+    def loss(
+        self,
+        x: Tuple[Tensor],
+        rpn_results_list: InstanceList,
+        batch_data_samples: List[DetDataSample],
+    ) -> dict:
         """Perform forward propagation and loss calculation of the detection
         roi on the features of the upstream network.
 
@@ -141,32 +154,35 @@ class MultiInstanceRoIHead(StandardRoIHead):
         for i in range(len(batch_data_samples)):
             # rename rpn_results.bboxes to rpn_results.priors
             rpn_results = rpn_results_list[i]
-            rpn_results.priors = rpn_results.pop('bboxes')
+            rpn_results.priors = rpn_results.pop("bboxes")
 
             assign_result = self.bbox_assigner.assign(
-                rpn_results, batch_gt_instances[i],
-                batch_gt_instances_ignore[i])
+                rpn_results, batch_gt_instances[i], batch_gt_instances_ignore[i]
+            )
             sampling_result = self.bbox_sampler.sample(
                 assign_result,
                 rpn_results,
                 batch_gt_instances[i],
-                batch_gt_instances_ignore=batch_gt_instances_ignore[i])
+                batch_gt_instances_ignore=batch_gt_instances_ignore[i],
+            )
             sampling_results.append(sampling_result)
 
         losses = dict()
         # bbox head loss
         if self.with_bbox:
             bbox_results = self.bbox_loss(x, sampling_results)
-            losses.update(bbox_results['loss_bbox'])
+            losses.update(bbox_results["loss_bbox"])
 
         return losses
 
-    def predict_bbox(self,
-                     x: Tuple[Tensor],
-                     batch_img_metas: List[dict],
-                     rpn_results_list: InstanceList,
-                     rcnn_test_cfg: ConfigType,
-                     rescale: bool = False) -> InstanceList:
+    def predict_bbox(
+        self,
+        x: Tuple[Tensor],
+        batch_img_metas: List[dict],
+        rpn_results_list: InstanceList,
+        rcnn_test_cfg: ConfigType,
+        rescale: bool = False,
+    ) -> InstanceList:
         """Perform forward propagation of the bbox head and predict detection
         results on the features of the upstream network.
 
@@ -195,18 +211,17 @@ class MultiInstanceRoIHead(StandardRoIHead):
         rois = bbox2roi(proposals)
 
         if rois.shape[0] == 0:
-            return empty_instances(
-                batch_img_metas, rois.device, task_type='bbox')
+            return empty_instances(batch_img_metas, rois.device, task_type="bbox")
 
         bbox_results = self._bbox_forward(x, rois)
 
         # split batch bbox prediction back to each image
-        if 'cls_score_ref' in bbox_results:
-            cls_scores = bbox_results['cls_score_ref']
-            bbox_preds = bbox_results['bbox_pred_ref']
+        if "cls_score_ref" in bbox_results:
+            cls_scores = bbox_results["cls_score_ref"]
+            bbox_preds = bbox_results["bbox_pred_ref"]
         else:
-            cls_scores = bbox_results['cls_score']
-            bbox_preds = bbox_results['bbox_pred']
+            cls_scores = bbox_results["cls_score"]
+            bbox_preds = bbox_results["bbox_pred"]
         num_proposals_per_img = tuple(len(p) for p in proposals)
         rois = rois.split(num_proposals_per_img, 0)
         cls_scores = cls_scores.split(num_proposals_per_img, 0)
@@ -214,7 +229,7 @@ class MultiInstanceRoIHead(StandardRoIHead):
         if bbox_preds is not None:
             bbox_preds = bbox_preds.split(num_proposals_per_img, 0)
         else:
-            bbox_preds = (None, ) * len(proposals)
+            bbox_preds = (None,) * len(proposals)
 
         result_list = self.bbox_head.predict_by_feat(
             rois=rois,
@@ -222,5 +237,6 @@ class MultiInstanceRoIHead(StandardRoIHead):
             bbox_preds=bbox_preds,
             batch_img_metas=batch_img_metas,
             rcnn_test_cfg=rcnn_test_cfg,
-            rescale=rescale)
+            rescale=rescale,
+        )
         return result_list

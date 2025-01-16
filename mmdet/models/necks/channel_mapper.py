@@ -57,11 +57,12 @@ class ChannelMapper(BaseModule):
         kernel_size: int = 3,
         conv_cfg: OptConfigType = None,
         norm_cfg: OptConfigType = None,
-        act_cfg: OptConfigType = dict(type='ReLU'),
-        bias: Union[bool, str] = 'auto',
+        act_cfg: OptConfigType = dict(type="ReLU"),
+        bias: Union[bool, str] = "auto",
         num_outs: int = None,
         init_cfg: OptMultiConfig = dict(
-            type='Xavier', layer='Conv2d', distribution='uniform')
+            type="Xavier", layer="Conv2d", distribution="uniform"
+        ),
     ) -> None:
         super().__init__(init_cfg=init_cfg)
         assert isinstance(in_channels, list)
@@ -79,7 +80,9 @@ class ChannelMapper(BaseModule):
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
                     act_cfg=act_cfg,
-                    bias=bias))
+                    bias=bias,
+                )
+            )
         if num_outs > len(in_channels):
             self.extra_convs = nn.ModuleList()
             for i in range(len(in_channels), num_outs):
@@ -97,7 +100,9 @@ class ChannelMapper(BaseModule):
                         conv_cfg=conv_cfg,
                         norm_cfg=norm_cfg,
                         act_cfg=act_cfg,
-                        bias=bias))
+                        bias=bias,
+                    )
+                )
 
     def forward(self, inputs: Tuple[Tensor]) -> Tuple[Tensor]:
         """Forward function."""

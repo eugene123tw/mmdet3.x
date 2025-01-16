@@ -15,5 +15,7 @@ model = dict(
     backbone=dict(
         depth=101,
         init_cfg=dict(
-            type=PretrainedInit,
-            checkpoint='open-mmlab://detectron2/resnet101_caffe')))
+            type=PretrainedInit, checkpoint="open-mmlab://detectron2/resnet101_caffe"
+        ),
+    )
+)

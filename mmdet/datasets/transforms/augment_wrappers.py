@@ -24,31 +24,31 @@ from mmdet.registry import TRANSFORMS
 _MAX_LEVEL = 10
 
 AUTOAUG_POLICIES_V0 = [
-    [('Equalize', 0.8, 1), ('ShearY', 0.8, 4)],
-    [('Color', 0.4, 9), ('Equalize', 0.6, 3)],
-    [('Color', 0.4, 1), ('Rotate', 0.6, 8)],
-    [('Solarize', 0.8, 3), ('Equalize', 0.4, 7)],
-    [('Solarize', 0.4, 2), ('Solarize', 0.6, 2)],
-    [('Color', 0.2, 0), ('Equalize', 0.8, 8)],
-    [('Equalize', 0.4, 8), ('SolarizeAdd', 0.8, 3)],
-    [('ShearX', 0.2, 9), ('Rotate', 0.6, 8)],
-    [('Color', 0.6, 1), ('Equalize', 1.0, 2)],
-    [('Invert', 0.4, 9), ('Rotate', 0.6, 0)],
-    [('Equalize', 1.0, 9), ('ShearY', 0.6, 3)],
-    [('Color', 0.4, 7), ('Equalize', 0.6, 0)],
-    [('Posterize', 0.4, 6), ('AutoContrast', 0.4, 7)],
-    [('Solarize', 0.6, 8), ('Color', 0.6, 9)],
-    [('Solarize', 0.2, 4), ('Rotate', 0.8, 9)],
-    [('Rotate', 1.0, 7), ('TranslateY', 0.8, 9)],
-    [('ShearX', 0.0, 0), ('Solarize', 0.8, 4)],
-    [('ShearY', 0.8, 0), ('Color', 0.6, 4)],
-    [('Color', 1.0, 0), ('Rotate', 0.6, 2)],
-    [('Equalize', 0.8, 4), ('Equalize', 0.0, 8)],
-    [('Equalize', 1.0, 4), ('AutoContrast', 0.6, 2)],
-    [('ShearY', 0.4, 7), ('SolarizeAdd', 0.6, 7)],
-    [('Posterize', 0.8, 2), ('Solarize', 0.6, 10)],
-    [('Solarize', 0.6, 8), ('Equalize', 0.6, 1)],
-    [('Color', 0.8, 6), ('Rotate', 0.4, 5)],
+    [("Equalize", 0.8, 1), ("ShearY", 0.8, 4)],
+    [("Color", 0.4, 9), ("Equalize", 0.6, 3)],
+    [("Color", 0.4, 1), ("Rotate", 0.6, 8)],
+    [("Solarize", 0.8, 3), ("Equalize", 0.4, 7)],
+    [("Solarize", 0.4, 2), ("Solarize", 0.6, 2)],
+    [("Color", 0.2, 0), ("Equalize", 0.8, 8)],
+    [("Equalize", 0.4, 8), ("SolarizeAdd", 0.8, 3)],
+    [("ShearX", 0.2, 9), ("Rotate", 0.6, 8)],
+    [("Color", 0.6, 1), ("Equalize", 1.0, 2)],
+    [("Invert", 0.4, 9), ("Rotate", 0.6, 0)],
+    [("Equalize", 1.0, 9), ("ShearY", 0.6, 3)],
+    [("Color", 0.4, 7), ("Equalize", 0.6, 0)],
+    [("Posterize", 0.4, 6), ("AutoContrast", 0.4, 7)],
+    [("Solarize", 0.6, 8), ("Color", 0.6, 9)],
+    [("Solarize", 0.2, 4), ("Rotate", 0.8, 9)],
+    [("Rotate", 1.0, 7), ("TranslateY", 0.8, 9)],
+    [("ShearX", 0.0, 0), ("Solarize", 0.8, 4)],
+    [("ShearY", 0.8, 0), ("Color", 0.6, 4)],
+    [("Color", 1.0, 0), ("Rotate", 0.6, 2)],
+    [("Equalize", 0.8, 4), ("Equalize", 0.0, 8)],
+    [("Equalize", 1.0, 4), ("AutoContrast", 0.6, 2)],
+    [("ShearY", 0.4, 7), ("SolarizeAdd", 0.6, 7)],
+    [("Posterize", 0.8, 2), ("Solarize", 0.6, 10)],
+    [("Solarize", 0.6, 8), ("Equalize", 0.6, 1)],
+    [("Color", 0.8, 6), ("Rotate", 0.4, 5)],
 ]
 
 
@@ -63,18 +63,26 @@ def policies_v0():
     return policies
 
 
-RANDAUG_SPACE = [[dict(type='AutoContrast')], [dict(type='Equalize')],
-                 [dict(type='Invert')], [dict(type='Rotate')],
-                 [dict(type='Posterize')], [dict(type='Solarize')],
-                 [dict(type='SolarizeAdd')], [dict(type='Color')],
-                 [dict(type='Contrast')], [dict(type='Brightness')],
-                 [dict(type='Sharpness')], [dict(type='ShearX')],
-                 [dict(type='ShearY')], [dict(type='TranslateX')],
-                 [dict(type='TranslateY')]]
+RANDAUG_SPACE = [
+    [dict(type="AutoContrast")],
+    [dict(type="Equalize")],
+    [dict(type="Invert")],
+    [dict(type="Rotate")],
+    [dict(type="Posterize")],
+    [dict(type="Solarize")],
+    [dict(type="SolarizeAdd")],
+    [dict(type="Color")],
+    [dict(type="Contrast")],
+    [dict(type="Brightness")],
+    [dict(type="Sharpness")],
+    [dict(type="ShearX")],
+    [dict(type="ShearY")],
+    [dict(type="TranslateX")],
+    [dict(type="TranslateY")],
+]
 
 
-def level_to_mag(level: Optional[int], min_mag: float,
-                 max_mag: float) -> float:
+def level_to_mag(level: Optional[int], min_mag: float, max_mag: float) -> float:
     """Map from level to magnitude."""
     if level is None:
         return round(np.random.rand() * (max_mag - min_mag) + min_mag, 1)
@@ -144,24 +152,29 @@ class AutoAugment(RandomChoice):
         >>> results = augmentation(results)
     """
 
-    def __init__(self,
-                 policies: List[List[Union[dict, ConfigDict]]] = policies_v0(),
-                 prob: Optional[List[float]] = None) -> None:
-        assert isinstance(policies, list) and len(policies) > 0, \
-            'Policies must be a non-empty list.'
+    def __init__(
+        self,
+        policies: List[List[Union[dict, ConfigDict]]] = policies_v0(),
+        prob: Optional[List[float]] = None,
+    ) -> None:
+        assert (
+            isinstance(policies, list) and len(policies) > 0
+        ), "Policies must be a non-empty list."
         for policy in policies:
-            assert isinstance(policy, list) and len(policy) > 0, \
-                'Each policy in policies must be a non-empty list.'
+            assert (
+                isinstance(policy, list) and len(policy) > 0
+            ), "Each policy in policies must be a non-empty list."
             for augment in policy:
-                assert isinstance(augment, dict) and 'type' in augment, \
-                    'Each specific augmentation must be a dict with key' \
-                    ' "type".'
+                assert isinstance(augment, dict) and "type" in augment, (
+                    "Each specific augmentation must be a dict with key" ' "type".'
+                )
         super().__init__(transforms=policies, prob=prob)
         self.policies = policies
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}(policies={self.policies}, ' \
-               f'prob={self.prob})'
+        return (
+            f"{self.__class__.__name__}(policies={self.policies}, " f"prob={self.prob})"
+        )
 
 
 @TRANSFORMS.register_module()
@@ -221,19 +234,23 @@ class RandAugment(RandomChoice):
         >>> results = augmentation(results)
     """
 
-    def __init__(self,
-                 aug_space: List[Union[dict, ConfigDict]] = RANDAUG_SPACE,
-                 aug_num: int = 2,
-                 prob: Optional[List[float]] = None) -> None:
-        assert isinstance(aug_space, list) and len(aug_space) > 0, \
-            'Augmentation space must be a non-empty list.'
+    def __init__(
+        self,
+        aug_space: List[Union[dict, ConfigDict]] = RANDAUG_SPACE,
+        aug_num: int = 2,
+        prob: Optional[List[float]] = None,
+    ) -> None:
+        assert (
+            isinstance(aug_space, list) and len(aug_space) > 0
+        ), "Augmentation space must be a non-empty list."
         for aug in aug_space:
-            assert isinstance(aug, list) and len(aug) == 1, \
-                'Each augmentation in aug_space must be a list.'
+            assert (
+                isinstance(aug, list) and len(aug) == 1
+            ), "Each augmentation in aug_space must be a list."
             for transform in aug:
-                assert isinstance(transform, dict) and 'type' in transform, \
-                    'Each specific transform must be a dict with key' \
-                    ' "type".'
+                assert isinstance(transform, dict) and "type" in transform, (
+                    "Each specific transform must be a dict with key" ' "type".'
+                )
         super().__init__(transforms=aug_space, prob=prob)
         self.aug_space = aug_space
         self.aug_num = aug_num
@@ -241,8 +258,7 @@ class RandAugment(RandomChoice):
     @cache_randomness
     def random_pipeline_index(self):
         indices = np.arange(len(self.transforms))
-        return np.random.choice(
-            indices, self.aug_num, p=self.prob, replace=False)
+        return np.random.choice(indices, self.aug_num, p=self.prob, replace=False)
 
     def transform(self, results: dict) -> dict:
         """Transform function to use RandAugment.
@@ -258,7 +274,9 @@ class RandAugment(RandomChoice):
         return results
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}(' \
-               f'aug_space={self.aug_space}, '\
-               f'aug_num={self.aug_num}, ' \
-               f'prob={self.prob})'
+        return (
+            f"{self.__class__.__name__}("
+            f"aug_space={self.aug_space}, "
+            f"aug_num={self.aug_num}, "
+            f"prob={self.prob})"
+        )

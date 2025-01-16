@@ -21,11 +21,10 @@ class BaseMOTModel(BaseModel, metaclass=ABCMeta):
         init_cfg (dict or list[dict]): Initialization config dict.
     """
 
-    def __init__(self,
-                 data_preprocessor: OptConfigType = None,
-                 init_cfg: OptMultiConfig = None) -> None:
-        super().__init__(
-            data_preprocessor=data_preprocessor, init_cfg=init_cfg)
+    def __init__(
+        self, data_preprocessor: OptConfigType = None, init_cfg: OptMultiConfig = None
+    ) -> None:
+        super().__init__(data_preprocessor=data_preprocessor, init_cfg=init_cfg)
 
     def freeze_module(self, module: Union[List[str], Tuple[str], str]) -> None:
         """Freeze module during training."""
@@ -33,7 +32,7 @@ class BaseMOTModel(BaseModel, metaclass=ABCMeta):
             modules = [module]
         else:
             if not (isinstance(module, list) or isinstance(module, tuple)):
-                raise TypeError('module must be a str or a list.')
+                raise TypeError("module must be a str or a list.")
             else:
                 modules = module
         for module in modules:
@@ -45,33 +44,35 @@ class BaseMOTModel(BaseModel, metaclass=ABCMeta):
     @property
     def with_detector(self) -> bool:
         """bool: whether the framework has a detector."""
-        return hasattr(self, 'detector') and self.detector is not None
+        return hasattr(self, "detector") and self.detector is not None
 
     @property
     def with_reid(self) -> bool:
         """bool: whether the framework has a reid model."""
-        return hasattr(self, 'reid') and self.reid is not None
+        return hasattr(self, "reid") and self.reid is not None
 
     @property
     def with_motion(self) -> bool:
         """bool: whether the framework has a motion model."""
-        return hasattr(self, 'motion') and self.motion is not None
+        return hasattr(self, "motion") and self.motion is not None
 
     @property
     def with_track_head(self) -> bool:
         """bool: whether the framework has a track_head."""
-        return hasattr(self, 'track_head') and self.track_head is not None
+        return hasattr(self, "track_head") and self.track_head is not None
 
     @property
     def with_tracker(self) -> bool:
         """bool: whether the framework has a tracker."""
-        return hasattr(self, 'tracker') and self.tracker is not None
+        return hasattr(self, "tracker") and self.tracker is not None
 
-    def forward(self,
-                inputs: Dict[str, Tensor],
-                data_samples: OptTrackSampleList = None,
-                mode: str = 'predict',
-                **kwargs):
+    def forward(
+        self,
+        inputs: Dict[str, Tensor],
+        data_samples: OptTrackSampleList = None,
+        mode: str = "predict",
+        **kwargs,
+    ):
         """The unified entry for a forward process in both training and test.
 
         The method should accept three modes: "tensor", "predict" and "loss":
@@ -104,33 +105,36 @@ class BaseMOTModel(BaseModel, metaclass=ABCMeta):
             - If ``mode="predict"``, return a list of :obj:`TrackDataSample`.
             - If ``mode="loss"``, return a dict of tensor.
         """
-        if mode == 'loss':
+        if mode == "loss":
             return self.loss(inputs, data_samples, **kwargs)
-        elif mode == 'predict':
+        elif mode == "predict":
             return self.predict(inputs, data_samples, **kwargs)
-        elif mode == 'tensor':
+        elif mode == "tensor":
             return self._forward(inputs, data_samples, **kwargs)
         else:
-            raise RuntimeError(f'Invalid mode "{mode}". '
-                               'Only supports loss, predict and tensor mode')
+            raise RuntimeError(
+                f'Invalid mode "{mode}". ' "Only supports loss, predict and tensor mode"
+            )
 
     @abstractmethod
-    def loss(self, inputs: Dict[str, Tensor], data_samples: TrackSampleList,
-             **kwargs) -> Union[dict, tuple]:
+    def loss(
+        self, inputs: Dict[str, Tensor], data_samples: TrackSampleList, **kwargs
+    ) -> Union[dict, tuple]:
         """Calculate losses from a batch of inputs and data samples."""
-        pass
 
     @abstractmethod
-    def predict(self, inputs: Dict[str, Tensor], data_samples: TrackSampleList,
-                **kwargs) -> TrackSampleList:
+    def predict(
+        self, inputs: Dict[str, Tensor], data_samples: TrackSampleList, **kwargs
+    ) -> TrackSampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing."""
-        pass
 
-    def _forward(self,
-                 inputs: Dict[str, Tensor],
-                 data_samples: OptTrackSampleList = None,
-                 **kwargs):
+    def _forward(
+        self,
+        inputs: Dict[str, Tensor],
+        data_samples: OptTrackSampleList = None,
+        **kwargs,
+    ):
         """Network forward process. Usually includes backbone, neck and head
         forward without any post-processing.
 
@@ -144,4 +148,5 @@ class BaseMOTModel(BaseModel, metaclass=ABCMeta):
             tuple[list]: A tuple of features from ``head`` forward.
         """
         raise NotImplementedError(
-            "_forward function (namely 'tensor' mode) is not supported now")
+            "_forward function (namely 'tensor' mode) is not supported now"
+        )

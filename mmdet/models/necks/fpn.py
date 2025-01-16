@@ -80,9 +80,10 @@ class FPN(BaseModule):
         conv_cfg: OptConfigType = None,
         norm_cfg: OptConfigType = None,
         act_cfg: OptConfigType = None,
-        upsample_cfg: ConfigType = dict(mode='nearest'),
+        upsample_cfg: ConfigType = dict(mode="nearest"),
         init_cfg: MultiConfig = dict(
-            type='Xavier', layer='Conv2d', distribution='uniform')
+            type="Xavier", layer="Conv2d", distribution="uniform"
+        ),
     ) -> None:
         super().__init__(init_cfg=init_cfg)
         assert isinstance(in_channels, list)
@@ -109,9 +110,9 @@ class FPN(BaseModule):
         assert isinstance(add_extra_convs, (str, bool))
         if isinstance(add_extra_convs, str):
             # Extra_convs_source choices: 'on_input', 'on_lateral', 'on_output'
-            assert add_extra_convs in ('on_input', 'on_lateral', 'on_output')
+            assert add_extra_convs in ("on_input", "on_lateral", "on_output")
         elif add_extra_convs:  # True
-            self.add_extra_convs = 'on_input'
+            self.add_extra_convs = "on_input"
 
         self.lateral_convs = nn.ModuleList()
         self.fpn_convs = nn.ModuleList()
@@ -124,7 +125,8 @@ class FPN(BaseModule):
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg if not self.no_norm_on_lateral else None,
                 act_cfg=act_cfg,
-                inplace=False)
+                inplace=False,
+            )
             fpn_conv = ConvModule(
                 out_channels,
                 out_channels,
@@ -133,7 +135,8 @@ class FPN(BaseModule):
                 conv_cfg=conv_cfg,
                 norm_cfg=norm_cfg,
                 act_cfg=act_cfg,
-                inplace=False)
+                inplace=False,
+            )
 
             self.lateral_convs.append(l_conv)
             self.fpn_convs.append(fpn_conv)
@@ -142,7 +145,7 @@ class FPN(BaseModule):
         extra_levels = num_outs - self.backbone_end_level + self.start_level
         if self.add_extra_convs and extra_levels >= 1:
             for i in range(extra_levels):
-                if i == 0 and self.add_extra_convs == 'on_input':
+                if i == 0 and self.add_extra_convs == "on_input":
                     in_channels = self.in_channels[self.backbone_end_level - 1]
                 else:
                     in_channels = out_channels
@@ -155,7 +158,8 @@ class FPN(BaseModule):
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg,
                     act_cfg=act_cfg,
-                    inplace=False)
+                    inplace=False,
+                )
                 self.fpn_convs.append(extra_fpn_conv)
 
     def forward(self, inputs: Tuple[Tensor]) -> tuple:
@@ -181,20 +185,20 @@ class FPN(BaseModule):
         for i in range(used_backbone_levels - 1, 0, -1):
             # In some cases, fixing `scale factor` (e.g. 2) is preferred, but
             #  it cannot co-exist with `size` in `F.interpolate`.
-            if 'scale_factor' in self.upsample_cfg:
+            if "scale_factor" in self.upsample_cfg:
                 # fix runtime error of "+=" inplace operation in PyTorch 1.10
                 laterals[i - 1] = laterals[i - 1] + F.interpolate(
-                    laterals[i], **self.upsample_cfg)
+                    laterals[i], **self.upsample_cfg
+                )
             else:
                 prev_shape = laterals[i - 1].shape[2:]
                 laterals[i - 1] = laterals[i - 1] + F.interpolate(
-                    laterals[i], size=prev_shape, **self.upsample_cfg)
+                    laterals[i], size=prev_shape, **self.upsample_cfg
+                )
 
         # build outputs
         # part 1: from original levels
-        outs = [
-            self.fpn_convs[i](laterals[i]) for i in range(used_backbone_levels)
-        ]
+        outs = [self.fpn_convs[i](laterals[i]) for i in range(used_backbone_levels)]
         # part 2: add extra levels
         if self.num_outs > len(outs):
             # use max pool to get more levels on top of outputs
@@ -204,11 +208,11 @@ class FPN(BaseModule):
                     outs.append(F.max_pool2d(outs[-1], 1, stride=2))
             # add conv layers on top of original feature maps (RetinaNet)
             else:
-                if self.add_extra_convs == 'on_input':
+                if self.add_extra_convs == "on_input":
                     extra_source = inputs[self.backbone_end_level - 1]
-                elif self.add_extra_convs == 'on_lateral':
+                elif self.add_extra_convs == "on_lateral":
                     extra_source = laterals[-1]
-                elif self.add_extra_convs == 'on_output':
+                elif self.add_extra_convs == "on_output":
                     extra_source = outs[-1]
                 else:
                     raise NotImplementedError

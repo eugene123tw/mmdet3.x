@@ -11,8 +11,13 @@ from mmdet.models.dense_heads.anchor_head import AnchorHead
 from mmdet.models.utils import images_to_levels, multi_apply
 from mmdet.registry import MODELS
 from mmdet.structures.bbox import cat_boxes, get_box_tensor
-from mmdet.utils import (InstanceList, OptConfigType, OptInstanceList,
-                         OptMultiConfig, reduce_mean)
+from mmdet.utils import (
+    InstanceList,
+    OptConfigType,
+    OptInstanceList,
+    OptMultiConfig,
+    reduce_mean,
+)
 from .utils import DepthWiseConvBlock
 
 
@@ -32,16 +37,17 @@ class EfficientDetSepBNHead(AnchorHead):
     Initialization config dict.
     """
 
-    def __init__(self,
-                 num_classes: int,
-                 num_ins: int,
-                 in_channels: int,
-                 feat_channels: int,
-                 stacked_convs: int = 3,
-                 norm_cfg: OptConfigType = dict(
-                     type='BN', momentum=1e-2, eps=1e-3),
-                 init_cfg: OptMultiConfig = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        num_classes: int,
+        num_ins: int,
+        in_channels: int,
+        feat_channels: int,
+        stacked_convs: int = 3,
+        norm_cfg: OptConfigType = dict(type="BN", momentum=1e-2, eps=1e-3),
+        init_cfg: OptMultiConfig = None,
+        **kwargs,
+    ) -> None:
         self.num_ins = num_ins
         self.stacked_convs = stacked_convs
         self.norm_cfg = norm_cfg
@@ -50,7 +56,8 @@ class EfficientDetSepBNHead(AnchorHead):
             in_channels=in_channels,
             feat_channels=feat_channels,
             init_cfg=init_cfg,
-            **kwargs)
+            **kwargs,
+        )
 
     def _init_layers(self) -> None:
         """Initialize layers of the head."""
@@ -59,34 +66,48 @@ class EfficientDetSepBNHead(AnchorHead):
         for i in range(self.stacked_convs):
             channels = self.in_channels if i == 0 else self.feat_channels
             self.reg_conv_list.append(
-                DepthWiseConvBlock(
-                    channels, self.feat_channels, apply_norm=False))
+                DepthWiseConvBlock(channels, self.feat_channels, apply_norm=False)
+            )
             self.cls_conv_list.append(
-                DepthWiseConvBlock(
-                    channels, self.feat_channels, apply_norm=False))
+                DepthWiseConvBlock(channels, self.feat_channels, apply_norm=False)
+            )
 
-        self.reg_bn_list = nn.ModuleList([
-            nn.ModuleList([
-                build_norm_layer(
-                    self.norm_cfg, num_features=self.feat_channels)[1]
-                for j in range(self.num_ins)
-            ]) for i in range(self.stacked_convs)
-        ])
+        self.reg_bn_list = nn.ModuleList(
+            [
+                nn.ModuleList(
+                    [
+                        build_norm_layer(
+                            self.norm_cfg, num_features=self.feat_channels
+                        )[1]
+                        for j in range(self.num_ins)
+                    ]
+                )
+                for i in range(self.stacked_convs)
+            ]
+        )
 
-        self.cls_bn_list = nn.ModuleList([
-            nn.ModuleList([
-                build_norm_layer(
-                    self.norm_cfg, num_features=self.feat_channels)[1]
-                for j in range(self.num_ins)
-            ]) for i in range(self.stacked_convs)
-        ])
+        self.cls_bn_list = nn.ModuleList(
+            [
+                nn.ModuleList(
+                    [
+                        build_norm_layer(
+                            self.norm_cfg, num_features=self.feat_channels
+                        )[1]
+                        for j in range(self.num_ins)
+                    ]
+                )
+                for i in range(self.stacked_convs)
+            ]
+        )
 
         self.cls_header = DepthWiseConvBlock(
             self.in_channels,
             self.num_base_priors * self.cls_out_channels,
-            apply_norm=False)
+            apply_norm=False,
+        )
         self.reg_header = DepthWiseConvBlock(
-            self.in_channels, self.num_base_priors * 4, apply_norm=False)
+            self.in_channels, self.num_base_priors * 4, apply_norm=False
+        )
         self.swish = Swish()
 
     def init_weights(self) -> None:
@@ -99,8 +120,7 @@ class EfficientDetSepBNHead(AnchorHead):
         nn.init.constant_(self.cls_header.pointwise_conv.bias, bias_cls)
         nn.init.constant_(self.reg_header.pointwise_conv.bias, 0.0)
 
-    def forward_single_bbox(self, feat: Tensor, level_id: int,
-                            i: int) -> Tensor:
+    def forward_single_bbox(self, feat: Tensor, level_id: int, i: int) -> Tensor:
         conv_op = self.reg_conv_list[i]
         bn = self.reg_bn_list[i][level_id]
 
@@ -110,8 +130,7 @@ class EfficientDetSepBNHead(AnchorHead):
 
         return feat
 
-    def forward_single_cls(self, feat: Tensor, level_id: int,
-                           i: int) -> Tensor:
+    def forward_single_cls(self, feat: Tensor, level_id: int, i: int) -> Tensor:
         conv_op = self.cls_conv_list[i]
         bn = self.cls_bn_list[i][level_id]
 
@@ -140,12 +159,13 @@ class EfficientDetSepBNHead(AnchorHead):
         return cls_scores, bbox_preds
 
     def loss_by_feat(
-            self,
-            cls_scores: List[Tensor],
-            bbox_preds: List[Tensor],
-            batch_gt_instances: InstanceList,
-            batch_img_metas: List[dict],
-            batch_gt_instances_ignore: OptInstanceList = None) -> dict:
+        self,
+        cls_scores: List[Tensor],
+        bbox_preds: List[Tensor],
+        batch_gt_instances: InstanceList,
+        batch_img_metas: List[dict],
+        batch_gt_instances_ignore: OptInstanceList = None,
+    ) -> dict:
         """Calculate the loss based on the features extracted by the detection
         head.
 
@@ -173,15 +193,22 @@ class EfficientDetSepBNHead(AnchorHead):
         device = cls_scores[0].device
 
         anchor_list, valid_flag_list = self.get_anchors(
-            featmap_sizes, batch_img_metas, device=device)
+            featmap_sizes, batch_img_metas, device=device
+        )
         cls_reg_targets = self.get_targets(
             anchor_list,
             valid_flag_list,
             batch_gt_instances,
             batch_img_metas,
-            batch_gt_instances_ignore=batch_gt_instances_ignore)
-        (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
-         avg_factor) = cls_reg_targets
+            batch_gt_instances_ignore=batch_gt_instances_ignore,
+        )
+        (
+            labels_list,
+            label_weights_list,
+            bbox_targets_list,
+            bbox_weights_list,
+            avg_factor,
+        ) = cls_reg_targets
 
         # anchor number of multi levels
         num_level_anchors = [anchors.size(0) for anchors in anchor_list[0]]
@@ -189,11 +216,11 @@ class EfficientDetSepBNHead(AnchorHead):
         concat_anchor_list = []
         for i in range(len(anchor_list)):
             concat_anchor_list.append(cat_boxes(anchor_list[i]))
-        all_anchor_list = images_to_levels(concat_anchor_list,
-                                           num_level_anchors)
+        all_anchor_list = images_to_levels(concat_anchor_list, num_level_anchors)
 
         avg_factor = reduce_mean(
-            torch.tensor(avg_factor, dtype=torch.float, device=device)).item()
+            torch.tensor(avg_factor, dtype=torch.float, device=device)
+        ).item()
         avg_factor = max(avg_factor, 1.0)
         losses_cls, losses_bbox = multi_apply(
             self.loss_by_feat_single,
@@ -204,13 +231,21 @@ class EfficientDetSepBNHead(AnchorHead):
             label_weights_list,
             bbox_targets_list,
             bbox_weights_list,
-            avg_factor=avg_factor)
+            avg_factor=avg_factor,
+        )
         return dict(loss_cls=losses_cls, loss_bbox=losses_bbox)
 
-    def loss_by_feat_single(self, cls_score: Tensor, bbox_pred: Tensor,
-                            anchors: Tensor, labels: Tensor,
-                            label_weights: Tensor, bbox_targets: Tensor,
-                            bbox_weights: Tensor, avg_factor: int) -> tuple:
+    def loss_by_feat_single(
+        self,
+        cls_score: Tensor,
+        bbox_pred: Tensor,
+        anchors: Tensor,
+        labels: Tensor,
+        label_weights: Tensor,
+        bbox_targets: Tensor,
+        bbox_weights: Tensor,
+        avg_factor: int,
+    ) -> tuple:
         """Calculate the loss of a single scale level based on the features
         extracted by the detection head.
 
@@ -238,17 +273,17 @@ class EfficientDetSepBNHead(AnchorHead):
         # classification loss
         labels = labels.reshape(-1)
         label_weights = label_weights.reshape(-1)
-        cls_score = cls_score.permute(0, 2, 3,
-                                      1).reshape(-1, self.cls_out_channels)
+        cls_score = cls_score.permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels)
         loss_cls = self.loss_cls(
-            cls_score, labels, label_weights, avg_factor=avg_factor)
+            cls_score, labels, label_weights, avg_factor=avg_factor
+        )
         # regression loss
         target_dim = bbox_targets.size(-1)
         bbox_targets = bbox_targets.reshape(-1, target_dim)
         bbox_weights = bbox_weights.reshape(-1, target_dim)
-        bbox_pred = bbox_pred.permute(0, 2, 3,
-                                      1).reshape(-1,
-                                                 self.bbox_coder.encode_size)
+        bbox_pred = bbox_pred.permute(0, 2, 3, 1).reshape(
+            -1, self.bbox_coder.encode_size
+        )
         if self.reg_decoded_bbox:
             # When the regression loss (e.g. `IouLoss`, `GIouLoss`)
             # is applied directly on the decoded bounding boxes, it
@@ -257,5 +292,6 @@ class EfficientDetSepBNHead(AnchorHead):
             bbox_pred = self.bbox_coder.decode(anchors, bbox_pred)
             bbox_pred = get_box_tensor(bbox_pred)
         loss_bbox = self.loss_bbox(
-            bbox_pred, bbox_targets, bbox_weights, avg_factor=avg_factor * 4)
+            bbox_pred, bbox_targets, bbox_weights, avg_factor=avg_factor * 4
+        )
         return loss_cls, loss_bbox

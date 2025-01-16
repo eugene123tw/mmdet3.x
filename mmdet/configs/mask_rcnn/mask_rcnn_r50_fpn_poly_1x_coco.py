@@ -14,8 +14,7 @@ with read_base():
 
 train_pipeline = [
     dict(type=LoadImageFromFile, backend_args=backend_args),
-    dict(
-        type=LoadAnnotations, with_bbox=True, with_mask=True, poly2mask=False),
+    dict(type=LoadAnnotations, with_bbox=True, with_mask=True, poly2mask=False),
     dict(type=Resize, scale=(1333, 800), keep_ratio=True),
     dict(type=RandomFlip, prob=0.5),
     dict(type=PackDetInputs),

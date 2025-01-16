@@ -16,8 +16,7 @@ from mmdet.utils import ConfigType, OptConfigType
 @torch.jit.script
 def rescoring_mask(scores, mask_pred, masks):
     mask_pred_ = mask_pred.float()
-    return scores * ((masks * mask_pred_).sum([1, 2]) /
-                     (mask_pred_.sum([1, 2]) + 1e-6))
+    return scores * ((masks * mask_pred_).sum([1, 2]) / (mask_pred_.sum([1, 2]) + 1e-6))
 
 
 @MODELS.register_module()
@@ -39,16 +38,17 @@ class SparseInst(BaseDetector):
             the initialization. Defaults to None.
     """
 
-    def __init__(self,
-                 data_preprocessor: ConfigType,
-                 backbone: ConfigType,
-                 encoder: ConfigType,
-                 decoder: ConfigType,
-                 criterion: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 init_cfg: OptConfigType = None):
-        super().__init__(
-            data_preprocessor=data_preprocessor, init_cfg=init_cfg)
+    def __init__(
+        self,
+        data_preprocessor: ConfigType,
+        backbone: ConfigType,
+        encoder: ConfigType,
+        decoder: ConfigType,
+        criterion: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        init_cfg: OptConfigType = None,
+    ):
+        super().__init__(data_preprocessor=data_preprocessor, init_cfg=init_cfg)
 
         # backbone
         self.backbone = MODELS.build(backbone)
@@ -64,9 +64,8 @@ class SparseInst(BaseDetector):
         self.mask_threshold = test_cfg.mask_thr_binary
 
     def _forward(
-            self,
-            batch_inputs: Tensor,
-            batch_data_samples: OptSampleList = None) -> Tuple[List[Tensor]]:
+        self, batch_inputs: Tensor, batch_data_samples: OptSampleList = None
+    ) -> Tuple[List[Tensor]]:
         """Network forward process. Usually includes backbone, neck and head
         forward without any post-processing.
 
@@ -81,10 +80,9 @@ class SparseInst(BaseDetector):
         results = self.decoder(x)
         return results
 
-    def predict(self,
-                batch_inputs: Tensor,
-                batch_data_samples: SampleList,
-                rescale: bool = True) -> SampleList:
+    def predict(
+        self, batch_inputs: Tensor, batch_data_samples: SampleList, rescale: bool = True
+    ) -> SampleList:
         """Predict results from a batch of inputs and data samples with post-
         processing.
 
@@ -112,15 +110,15 @@ class SparseInst(BaseDetector):
         max_shape = batch_inputs.shape[-2:]
         output = self._forward(batch_inputs)
 
-        pred_scores = output['pred_logits'].sigmoid()
-        pred_masks = output['pred_masks'].sigmoid()
-        pred_objectness = output['pred_scores'].sigmoid()
+        pred_scores = output["pred_logits"].sigmoid()
+        pred_masks = output["pred_masks"].sigmoid()
+        pred_objectness = output["pred_scores"].sigmoid()
         pred_scores = torch.sqrt(pred_scores * pred_objectness)
 
         results_list = []
-        for batch_idx, (scores_per_image, mask_pred_per_image,
-                        datasample) in enumerate(
-                            zip(pred_scores, pred_masks, batch_data_samples)):
+        for batch_idx, (scores_per_image, mask_pred_per_image, datasample) in enumerate(
+            zip(pred_scores, pred_masks, batch_data_samples)
+        ):
             result = InstanceData()
             # max/argmax
             scores, labels = scores_per_image.max(dim=-1)
@@ -138,23 +136,25 @@ class SparseInst(BaseDetector):
 
             img_meta = datasample.metainfo
             # rescoring mask using maskness
-            scores = rescoring_mask(scores,
-                                    mask_pred_per_image > self.mask_threshold,
-                                    mask_pred_per_image)
-            h, w = img_meta['img_shape'][:2]
+            scores = rescoring_mask(
+                scores, mask_pred_per_image > self.mask_threshold, mask_pred_per_image
+            )
+            h, w = img_meta["img_shape"][:2]
             mask_pred_per_image = F.interpolate(
                 mask_pred_per_image.unsqueeze(1),
                 size=max_shape,
-                mode='bilinear',
-                align_corners=False)[:, :, :h, :w]
+                mode="bilinear",
+                align_corners=False,
+            )[:, :, :h, :w]
 
             if rescale:
-                ori_h, ori_w = img_meta['ori_shape'][:2]
+                ori_h, ori_w = img_meta["ori_shape"][:2]
                 mask_pred_per_image = F.interpolate(
                     mask_pred_per_image,
                     size=(ori_h, ori_w),
-                    mode='bilinear',
-                    align_corners=False).squeeze(1)
+                    mode="bilinear",
+                    align_corners=False,
+                ).squeeze(1)
 
             mask_pred = mask_pred_per_image > self.mask_threshold
             result.masks = mask_pred
@@ -166,11 +166,13 @@ class SparseInst(BaseDetector):
             results_list.append(result)
 
         batch_data_samples = self.add_pred_to_datasample(
-            batch_data_samples, results_list)
+            batch_data_samples, results_list
+        )
         return batch_data_samples
 
-    def loss(self, batch_inputs: Tensor,
-             batch_data_samples: SampleList) -> Union[dict, list]:
+    def loss(
+        self, batch_inputs: Tensor, batch_data_samples: SampleList
+    ) -> Union[dict, list]:
         """Calculate losses from a batch of inputs and data samples.
 
         Args:
@@ -184,11 +186,15 @@ class SparseInst(BaseDetector):
             dict: A dictionary of loss components.
         """
         outs = self._forward(batch_inputs)
-        (batch_gt_instances, batch_gt_instances_ignore,
-         batch_img_metas) = unpack_gt_instances(batch_data_samples)
+        (
+            batch_gt_instances,
+            batch_gt_instances_ignore,
+            batch_img_metas,
+        ) = unpack_gt_instances(batch_data_samples)
 
-        losses = self.criterion(outs, batch_gt_instances, batch_img_metas,
-                                batch_gt_instances_ignore)
+        losses = self.criterion(
+            outs, batch_gt_instances, batch_img_metas, batch_gt_instances_ignore
+        )
         return losses
 
     def extract_feat(self, batch_inputs: Tensor) -> Tuple[Tensor]:

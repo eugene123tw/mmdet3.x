@@ -14,8 +14,13 @@ from mmdet.models.utils import unpack_gt_instances
 from mmdet.registry import MODELS
 from mmdet.structures import SampleList
 from mmdet.structures.bbox import bbox2distance
-from mmdet.utils import (ConfigType, InstanceList, OptConfigType,
-                         OptInstanceList, reduce_mean)
+from mmdet.utils import (
+    ConfigType,
+    InstanceList,
+    OptConfigType,
+    OptInstanceList,
+    reduce_mean,
+)
 from .iou_loss import IOULoss
 
 # from .heatmap_focal_loss import binary_heatmap_focal_loss_jit
@@ -59,36 +64,41 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             of CenterNet.
     """
 
-    def __init__(self,
-                 num_classes: int,
-                 in_channels: int,
-                 regress_ranges: RangeType = ((0, 80), (64, 160), (128, 320),
-                                              (256, 640), (512, INF)),
-                 hm_min_radius: int = 4,
-                 hm_min_overlap: float = 0.8,
-                 more_pos: bool = False,
-                 more_pos_thresh: float = 0.2,
-                 more_pos_topk: int = 9,
-                 soft_weight_on_reg: bool = False,
-                 not_clamp_box: bool = False,
-                 loss_cls: ConfigType = dict(
-                     type='HeatmapFocalLoss',
-                     alpha=0.25,
-                     beta=4.0,
-                     gamma=2.0,
-                     pos_weight=1.0,
-                     neg_weight=1.0,
-                     sigmoid_clamp=1e-4,
-                     ignore_high_fp=-1.0,
-                     loss_weight=1.0,
-                 ),
-                 loss_bbox: ConfigType = dict(
-                     type='GIoULoss', loss_weight=2.0),
-                 norm_cfg: OptConfigType = dict(
-                     type='GN', num_groups=32, requires_grad=True),
-                 train_cfg: OptConfigType = None,
-                 test_cfg: OptConfigType = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        num_classes: int,
+        in_channels: int,
+        regress_ranges: RangeType = (
+            (0, 80),
+            (64, 160),
+            (128, 320),
+            (256, 640),
+            (512, INF),
+        ),
+        hm_min_radius: int = 4,
+        hm_min_overlap: float = 0.8,
+        more_pos: bool = False,
+        more_pos_thresh: float = 0.2,
+        more_pos_topk: int = 9,
+        soft_weight_on_reg: bool = False,
+        not_clamp_box: bool = False,
+        loss_cls: ConfigType = dict(
+            type="HeatmapFocalLoss",
+            alpha=0.25,
+            beta=4.0,
+            gamma=2.0,
+            pos_weight=1.0,
+            neg_weight=1.0,
+            sigmoid_clamp=1e-4,
+            ignore_high_fp=-1.0,
+            loss_weight=1.0,
+        ),
+        loss_bbox: ConfigType = dict(type="GIoULoss", loss_weight=2.0),
+        norm_cfg: OptConfigType = dict(type="GN", num_groups=32, requires_grad=True),
+        train_cfg: OptConfigType = None,
+        test_cfg: OptConfigType = None,
+        **kwargs,
+    ) -> None:
         super().__init__(
             num_classes=num_classes,
             in_channels=in_channels,
@@ -97,7 +107,8 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             norm_cfg=norm_cfg,
             train_cfg=train_cfg,
             test_cfg=test_cfg,
-            **kwargs)
+            **kwargs,
+        )
         self.soft_weight_on_reg = soft_weight_on_reg
         self.hm_min_radius = hm_min_radius
         self.more_pos_thresh = more_pos_thresh
@@ -105,7 +116,7 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         self.more_pos = more_pos
         self.not_clamp_box = not_clamp_box
         self.delta = (1 - hm_min_overlap) / (1 + hm_min_overlap)
-        self.loss_bbox = IOULoss('giou')
+        self.loss_bbox = IOULoss("giou")
 
         # GaussianFocalLoss must be sigmoid mode
         self.use_sigmoid_cls = True
@@ -119,8 +130,9 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         self._init_reg_convs()
         self._init_predictor()
 
-    def forward_single(self, x: Tensor, scale: Scale,
-                       stride: int) -> Tuple[Tensor, Tensor]:
+    def forward_single(
+        self, x: Tensor, scale: Scale, stride: int
+    ) -> Tuple[Tensor, Tensor]:
         """Forward features of a single scale level.
 
         Args:
@@ -152,7 +164,7 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         bbox_preds: List[Tensor],
         batch_gt_instances: InstanceList,
         batch_img_metas: List[dict],
-        batch_gt_instances_ignore: OptInstanceList = None
+        batch_gt_instances_ignore: OptInstanceList = None,
     ) -> Dict[str, Tensor]:
         """Calculate the loss based on the features extracted by the detection
         head.
@@ -180,9 +192,8 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         assert len(cls_scores) == len(bbox_preds)
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
         all_level_points = self.prior_generator.grid_priors(
-            featmap_sizes,
-            dtype=bbox_preds[0].dtype,
-            device=bbox_preds[0].device)
+            featmap_sizes, dtype=bbox_preds[0].dtype, device=bbox_preds[0].device
+        )
 
         # 1 flatten outputs
         flatten_cls_scores = [
@@ -190,80 +201,83 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             for cls_score in cls_scores
         ]
         flatten_bbox_preds = [
-            bbox_pred.permute(0, 2, 3, 1).reshape(-1, 4)
-            for bbox_pred in bbox_preds
+            bbox_pred.permute(0, 2, 3, 1).reshape(-1, 4) for bbox_pred in bbox_preds
         ]
         flatten_cls_scores = torch.cat(flatten_cls_scores)
         flatten_bbox_preds = torch.cat(flatten_bbox_preds)
 
         # repeat points to align with bbox_preds
         flatten_points = torch.cat(
-            [points.repeat(num_imgs, 1) for points in all_level_points])
+            [points.repeat(num_imgs, 1) for points in all_level_points]
+        )
 
-        assert (torch.isfinite(flatten_bbox_preds).all().item())
+        assert torch.isfinite(flatten_bbox_preds).all().item()
 
         # 2 calc reg and cls branch targets
-        cls_targets, bbox_targets = self.get_targets(all_level_points,
-                                                     batch_gt_instances)
+        cls_targets, bbox_targets = self.get_targets(
+            all_level_points, batch_gt_instances
+        )
 
         # 3 pos index for cls branch
         featmap_sizes = flatten_points.new_tensor(featmap_sizes)
 
         if self.more_pos:
             pos_inds, cls_labels = self.add_cls_pos_inds(
-                flatten_points, flatten_bbox_preds, featmap_sizes,
-                batch_gt_instances)
+                flatten_points, flatten_bbox_preds, featmap_sizes, batch_gt_instances
+            )
         else:
-            pos_inds = self._get_label_inds(batch_gt_instances,
-                                            batch_img_metas, featmap_sizes)
+            pos_inds = self._get_label_inds(
+                batch_gt_instances, batch_img_metas, featmap_sizes
+            )
 
         # 4 calc cls loss
         if pos_inds is None:
             # num_gts=0
             num_pos_cls = bbox_preds[0].new_tensor(0, dtype=torch.float)
         else:
-            num_pos_cls = bbox_preds[0].new_tensor(
-                len(pos_inds), dtype=torch.float)
+            num_pos_cls = bbox_preds[0].new_tensor(len(pos_inds), dtype=torch.float)
         num_pos_cls = max(reduce_mean(num_pos_cls), 1.0)
 
         cat_agn_cls_targets = cls_targets.max(dim=1)[0]  # M
 
         cls_pos_loss, cls_neg_loss = self.loss_cls(
-            flatten_cls_scores.squeeze(1), cat_agn_cls_targets, pos_inds,
-            num_pos_cls)
+            flatten_cls_scores.squeeze(1), cat_agn_cls_targets, pos_inds, num_pos_cls
+        )
 
         # 5 calc reg loss
-        pos_bbox_inds = torch.nonzero(
-            bbox_targets.max(dim=1)[0] >= 0).squeeze(1)
+        pos_bbox_inds = torch.nonzero(bbox_targets.max(dim=1)[0] >= 0).squeeze(1)
         pos_bbox_preds = flatten_bbox_preds[pos_bbox_inds]
         pos_bbox_targets = bbox_targets[pos_bbox_inds]
 
         bbox_weight_map = cls_targets.max(dim=1)[0]
         bbox_weight_map = bbox_weight_map[pos_bbox_inds]
-        bbox_weight_map = bbox_weight_map if self.soft_weight_on_reg \
+        bbox_weight_map = (
+            bbox_weight_map
+            if self.soft_weight_on_reg
             else torch.ones_like(bbox_weight_map)
+        )
 
         num_pos_bbox = max(reduce_mean(bbox_weight_map.sum()), 1.0)
 
         if len(pos_bbox_inds) > 0:
-            bbox_loss = self.loss_bbox(
-                pos_bbox_preds,
-                pos_bbox_targets,
-                bbox_weight_map,
-                reduction='sum') / num_pos_bbox
+            bbox_loss = (
+                self.loss_bbox(
+                    pos_bbox_preds, pos_bbox_targets, bbox_weight_map, reduction="sum"
+                )
+                / num_pos_bbox
+            )
         else:
             bbox_loss = flatten_bbox_preds.sum() * 0
 
         return dict(
-            loss_bbox=bbox_loss,
-            loss_cls_pos=cls_pos_loss,
-            loss_cls_neg=cls_neg_loss)
+            loss_bbox=bbox_loss, loss_cls_pos=cls_pos_loss, loss_cls_neg=cls_neg_loss
+        )
 
     def loss_and_predict(
         self,
         x: Tuple[Tensor],
         batch_data_samples: SampleList,
-        proposal_cfg: Optional[ConfigDict] = None
+        proposal_cfg: Optional[ConfigDict] = None,
     ) -> Tuple[dict, InstanceList]:
         """Perform forward propagation of the head, then calculate loss and
         predictions from the features and data samples.
@@ -285,27 +299,32 @@ class CenterNetRPNHead(CenterNetUpdateHead):
                   results of each image after the post process.
         """
         outputs = unpack_gt_instances(batch_data_samples)
-        (batch_gt_instances, batch_gt_instances_ignore,
-         batch_img_metas) = outputs
+        (batch_gt_instances, batch_gt_instances_ignore, batch_img_metas) = outputs
 
         outs = self(x)
 
-        loss_inputs = outs + (batch_gt_instances, batch_img_metas,
-                              batch_gt_instances_ignore)
+        loss_inputs = outs + (
+            batch_gt_instances,
+            batch_img_metas,
+            batch_gt_instances_ignore,
+        )
         losses = self.loss_by_feat(*loss_inputs)
         predictions = self.predict_by_feat(
-            *outs, batch_img_metas=batch_img_metas, cfg=proposal_cfg)
+            *outs, batch_img_metas=batch_img_metas, cfg=proposal_cfg
+        )
         return losses, predictions
 
-    def _predict_by_feat_single(self,
-                                cls_score_list: List[Tensor],
-                                bbox_pred_list: List[Tensor],
-                                score_factor_list: List[Tensor],
-                                mlvl_priors: List[Tensor],
-                                img_meta: dict,
-                                cfg: ConfigDict,
-                                rescale: bool = False,
-                                with_nms: bool = True) -> InstanceData:
+    def _predict_by_feat_single(
+        self,
+        cls_score_list: List[Tensor],
+        bbox_pred_list: List[Tensor],
+        score_factor_list: List[Tensor],
+        mlvl_priors: List[Tensor],
+        img_meta: dict,
+        cfg: ConfigDict,
+        rescale: bool = False,
+        with_nms: bool = True,
+    ) -> InstanceData:
         """Transform a single image's features extracted from the head into
         bbox results.
 
@@ -348,27 +367,25 @@ class CenterNetRPNHead(CenterNetUpdateHead):
 
         cfg = self.test_cfg if cfg is None else cfg
         cfg = copy.deepcopy(cfg)
-        nms_pre = cfg.get('nms_pre', -1)
+        nms_pre = cfg.get("nms_pre", -1)
 
         mlvl_bbox_preds = []
         mlvl_valid_priors = []
         mlvl_scores = []
         mlvl_labels = []
 
-        for level_idx, (cls_score, bbox_pred, score_factor, priors) in \
-                enumerate(zip(cls_score_list, bbox_pred_list,
-                              score_factor_list, mlvl_priors)):
-
+        for level_idx, (cls_score, bbox_pred, score_factor, priors) in enumerate(
+            zip(cls_score_list, bbox_pred_list, score_factor_list, mlvl_priors)
+        ):
             assert cls_score.size()[-2:] == bbox_pred.size()[-2:]
 
             bbox_pred = bbox_pred * self.strides[level_idx]
 
             dim = self.bbox_coder.encode_size
             bbox_pred = bbox_pred.permute(1, 2, 0).reshape(-1, dim)
-            cls_score = cls_score.permute(1, 2,
-                                          0).reshape(-1, self.cls_out_channels)
+            cls_score = cls_score.permute(1, 2, 0).reshape(-1, self.cls_out_channels)
             heatmap = cls_score.sigmoid()
-            score_thr = cfg.get('score_thr', 0)
+            score_thr = cfg.get("score_thr", 0)
 
             candidate_inds = heatmap > score_thr  # 0.05
             pre_nms_top_n = candidate_inds.sum()  # N
@@ -384,19 +401,20 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             per_grids = priors[box_loc]  # n x 2
 
             if candidate_inds.sum().item() > pre_nms_top_n.item():
-                heatmap, top_k_indices = \
-                    heatmap.topk(pre_nms_top_n, sorted=False)
+                heatmap, top_k_indices = heatmap.topk(pre_nms_top_n, sorted=False)
                 labels = labels[top_k_indices]
                 bbox_pred = bbox_pred[top_k_indices]
                 per_grids = per_grids[top_k_indices]
 
-            bboxes = torch.stack([
-                per_grids[:, 0] - bbox_pred[:, 0],
-                per_grids[:, 1] - bbox_pred[:, 1],
-                per_grids[:, 0] + bbox_pred[:, 2],
-                per_grids[:, 1] + bbox_pred[:, 3],
-            ],
-                                 dim=1)  # n x 4
+            bboxes = torch.stack(
+                [
+                    per_grids[:, 0] - bbox_pred[:, 0],
+                    per_grids[:, 1] - bbox_pred[:, 1],
+                    per_grids[:, 0] + bbox_pred[:, 2],
+                    per_grids[:, 1] + bbox_pred[:, 3],
+                ],
+                dim=1,
+            )  # n x 4
 
             # avoid invalid boxes in RoI heads
             bboxes[:, 2] = torch.max(bboxes[:, 2], bboxes[:, 0] + 0.01)
@@ -422,41 +440,40 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             cfg=cfg,
             rescale=rescale,
             with_nms=with_nms,
-            img_meta=img_meta)
+            img_meta=img_meta,
+        )
 
-    def _get_label_inds(self, batch_gt_instances, batch_img_metas,
-                        shapes_per_level):
-        '''
+    def _get_label_inds(self, batch_gt_instances, batch_img_metas, shapes_per_level):
+        """
         Inputs:
             batch_gt_instances: [n_i], sum n_i = N
             shapes_per_level: L x 2 [(h_l, w_l)]_L
         Returns:
             pos_inds: N'
             labels: N'
-        '''
+        """
         pos_inds = []
         L = len(self.strides)
         B = len(batch_gt_instances)
         shapes_per_level = shapes_per_level.long()
-        loc_per_level = (shapes_per_level[:, 0] *
-                         shapes_per_level[:, 1]).long()  # L
+        loc_per_level = (shapes_per_level[:, 0] * shapes_per_level[:, 1]).long()  # L
         level_bases = []
         s = 0
         for i in range(L):
             level_bases.append(s)
             s = s + B * loc_per_level[i]
         level_bases = shapes_per_level.new_tensor(level_bases).long()  # L
-        strides_default = shapes_per_level.new_tensor(
-            self.strides).float()  # L
+        strides_default = shapes_per_level.new_tensor(self.strides).float()  # L
         for im_i in range(B):
             targets_per_im = batch_gt_instances[im_i]
-            if hasattr(targets_per_im, 'bboxes'):
+            if hasattr(targets_per_im, "bboxes"):
                 bboxes = targets_per_im.bboxes  # n x 4
             else:
                 bboxes = targets_per_im.labels.new_tensor(
-                    [], dtype=torch.float).reshape(-1, 4)
+                    [], dtype=torch.float
+                ).reshape(-1, 4)
             n = bboxes.shape[0]
-            centers = ((bboxes[:, [0, 1]] + bboxes[:, [2, 3]]) / 2)  # n x 2
+            centers = (bboxes[:, [0, 1]] + bboxes[:, [2, 3]]) / 2  # n x 2
             centers = centers.view(n, 1, 2).expand(n, L, 2).contiguous()
             if self.not_clamp_box:
                 h, w = batch_img_metas[im_i]._image_size
@@ -465,9 +482,12 @@ class CenterNetRPNHead(CenterNetUpdateHead):
             strides = strides_default.view(1, L, 1).expand(n, L, 2)
             centers_inds = (centers / strides).long()  # n x L x 2
             Ws = shapes_per_level[:, 1].view(1, L).expand(n, L)
-            pos_ind = level_bases.view(1, L).expand(n, L) \
-                + im_i * loc_per_level.view(1, L).expand(n, L) \
-                + centers_inds[:, :, 1] * Ws + centers_inds[:, :, 0]  # n x L
+            pos_ind = (
+                level_bases.view(1, L).expand(n, L)
+                + im_i * loc_per_level.view(1, L).expand(n, L)
+                + centers_inds[:, :, 1] * Ws
+                + centers_inds[:, :, 0]
+            )  # n x L
             is_cared_in_the_level = self.assign_fpn_level(bboxes)
             pos_ind = pos_ind[is_cared_in_the_level].view(-1)
 
@@ -476,42 +496,46 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         return pos_inds  # N, N
 
     def assign_fpn_level(self, boxes):
-        '''
+        """
         Inputs:
             boxes: n x 4
             size_ranges: L x 2
         Return:
             is_cared_in_the_level: n x L
-        '''
+        """
         size_ranges = boxes.new_tensor(self.regress_ranges).view(
-            len(self.regress_ranges), 2)  # L x 2
-        crit = ((boxes[:, 2:] - boxes[:, :2])**2).sum(dim=1)**0.5 / 2  # n
+            len(self.regress_ranges), 2
+        )  # L x 2
+        crit = ((boxes[:, 2:] - boxes[:, :2]) ** 2).sum(dim=1) ** 0.5 / 2  # n
         n, L = crit.shape[0], size_ranges.shape[0]
         crit = crit.view(n, 1).expand(n, L)
         size_ranges_expand = size_ranges.view(1, L, 2).expand(n, L, 2)
-        is_cared_in_the_level = (crit >= size_ranges_expand[:, :, 0]) & \
-            (crit <= size_ranges_expand[:, :, 1])
+        is_cared_in_the_level = (crit >= size_ranges_expand[:, :, 0]) & (
+            crit <= size_ranges_expand[:, :, 1]
+        )
         return is_cared_in_the_level
 
-    def _get_targets_single(self, gt_instances: InstanceData, points: Tensor,
-                            regress_ranges: Tensor,
-                            strides: Tensor) -> Tuple[Tensor, Tensor]:
+    def _get_targets_single(
+        self,
+        gt_instances: InstanceData,
+        points: Tensor,
+        regress_ranges: Tensor,
+        strides: Tensor,
+    ) -> Tuple[Tensor, Tensor]:
         """Compute classification and bbox targets for a single image."""
         num_points = points.size(0)
         num_gts = len(gt_instances)
         gt_labels = gt_instances.labels
 
-        if not hasattr(gt_instances, 'bboxes'):
+        if not hasattr(gt_instances, "bboxes"):
             gt_bboxes = gt_labels.new_tensor([], dtype=torch.float)
         else:
             gt_bboxes = gt_instances.bboxes
 
-        if not hasattr(gt_instances, 'bboxes') or num_gts == 0:
-            return gt_labels.new_full((num_points,
-                                       self.num_classes),
-                                      self.num_classes,
-                                      dtype=torch.float), \
-                   gt_bboxes.new_full((num_points, 4), -1)
+        if not hasattr(gt_instances, "bboxes") or num_gts == 0:
+            return gt_labels.new_full(
+                (num_points, self.num_classes), self.num_classes, dtype=torch.float
+            ), gt_bboxes.new_full((num_points, 4), -1)
 
         # Calculate the regression tblr target corresponding to all points
         points = points[:, None].expand(num_points, num_gts, 2)
@@ -526,32 +550,34 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         # condition2: Calculate the nearest points from
         # the upper, lower, left and right ranges from
         # the center of the gt bbox
-        centers = ((gt_bboxes[..., [0, 1]] + gt_bboxes[..., [2, 3]]) / 2)
-        centers_discret = ((centers / strides).int() * strides).float() + \
-            strides / 2
+        centers = (gt_bboxes[..., [0, 1]] + gt_bboxes[..., [2, 3]]) / 2
+        centers_discret = ((centers / strides).int() * strides).float() + strides / 2
 
         centers_discret_dist = points - centers_discret
         dist_x = centers_discret_dist[..., 0].abs()
         dist_y = centers_discret_dist[..., 1].abs()
-        inside_gt_center3x3_mask = (dist_x <= strides[..., 0]) & \
-                                   (dist_y <= strides[..., 0])
+        inside_gt_center3x3_mask = (dist_x <= strides[..., 0]) & (
+            dist_y <= strides[..., 0]
+        )
 
         # condition3： limit the regression range for each location
         bbox_target_wh = bbox_target[..., :2] + bbox_target[..., 2:]
-        crit = (bbox_target_wh**2).sum(dim=2)**0.5 / 2
-        inside_fpn_level_mask = (crit >= regress_ranges[:, [0]]) & \
-                                (crit <= regress_ranges[:, [1]])
-        bbox_target_mask = inside_gt_bbox_mask & \
-            inside_gt_center3x3_mask & \
-            inside_fpn_level_mask
+        crit = (bbox_target_wh**2).sum(dim=2) ** 0.5 / 2
+        inside_fpn_level_mask = (crit >= regress_ranges[:, [0]]) & (
+            crit <= regress_ranges[:, [1]]
+        )
+        bbox_target_mask = (
+            inside_gt_bbox_mask & inside_gt_center3x3_mask & inside_fpn_level_mask
+        )
 
         # Calculate the distance weight map
-        gt_center_peak_mask = ((centers_discret_dist**2).sum(dim=2) == 0)
-        weighted_dist = ((points - centers)**2).sum(dim=2)  # M x N
+        gt_center_peak_mask = (centers_discret_dist**2).sum(dim=2) == 0
+        weighted_dist = ((points - centers) ** 2).sum(dim=2)  # M x N
         weighted_dist[gt_center_peak_mask] = 0
 
         areas = (gt_bboxes[..., 2] - gt_bboxes[..., 0]) * (
-            gt_bboxes[..., 3] - gt_bboxes[..., 1])
+            gt_bboxes[..., 3] - gt_bboxes[..., 1]
+        )
         radius = self.delta**2 * 2 * areas
         radius = torch.clamp(radius, min=self.hm_min_radius**2)
         weighted_dist = weighted_dist / radius
@@ -560,8 +586,9 @@ class CenterNetRPNHead(CenterNetUpdateHead):
         bbox_weighted_dist = weighted_dist.clone()
         bbox_weighted_dist[bbox_target_mask == 0] = INF * 1.0
         min_dist, min_inds = bbox_weighted_dist.min(dim=1)
-        bbox_target = bbox_target[range(len(bbox_target)),
-                                  min_inds]  # M x N x 4 --> M x 4
+        bbox_target = bbox_target[
+            range(len(bbox_target)), min_inds
+        ]  # M x N x 4 --> M x 4
         bbox_target[min_dist == INF] = -INF
 
         # Convert to feature map scale

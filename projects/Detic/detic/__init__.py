@@ -4,6 +4,4 @@ from .detic_bbox_head import DeticBBoxHead
 from .detic_roi_head import DeticRoIHead
 from .zero_shot_classifier import ZeroShotClassifier
 
-__all__ = [
-    'CenterNetRPNHead', 'DeticBBoxHead', 'DeticRoIHead', 'ZeroShotClassifier'
-]
+__all__ = ["CenterNetRPNHead", "DeticBBoxHead", "DeticRoIHead", "ZeroShotClassifier"]

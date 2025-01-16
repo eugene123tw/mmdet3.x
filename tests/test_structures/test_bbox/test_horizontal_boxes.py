@@ -12,29 +12,26 @@ from mmdet.structures.mask import BitmapMasks, PolygonMasks
 
 
 class TestHorizontalBoxes(TestCase):
-
     def test_init(self):
         th_boxes = torch.Tensor([10, 10, 20, 20]).reshape(1, 1, 4)
         th_boxes_cxcywh = torch.Tensor([15, 15, 10, 10]).reshape(1, 1, 4)
 
         boxes = HorizontalBoxes(th_boxes)
         assert_allclose(boxes.tensor, th_boxes)
-        boxes = HorizontalBoxes(th_boxes, in_mode='xyxy')
+        boxes = HorizontalBoxes(th_boxes, in_mode="xyxy")
         assert_allclose(boxes.tensor, th_boxes)
-        boxes = HorizontalBoxes(th_boxes_cxcywh, in_mode='cxcywh')
+        boxes = HorizontalBoxes(th_boxes_cxcywh, in_mode="cxcywh")
         assert_allclose(boxes.tensor, th_boxes)
         with self.assertRaises(ValueError):
-            boxes = HorizontalBoxes(th_boxes, in_mode='invalid')
+            boxes = HorizontalBoxes(th_boxes, in_mode="invalid")
 
     def test_cxcywh(self):
         th_boxes = torch.Tensor([10, 10, 20, 20]).reshape(1, 1, 4)
         th_boxes_cxcywh = torch.Tensor([15, 15, 10, 10]).reshape(1, 1, 4)
         boxes = HorizontalBoxes(th_boxes)
 
-        assert_allclose(
-            HorizontalBoxes.xyxy_to_cxcywh(th_boxes), th_boxes_cxcywh)
-        assert_allclose(th_boxes,
-                        HorizontalBoxes.cxcywh_to_xyxy(th_boxes_cxcywh))
+        assert_allclose(HorizontalBoxes.xyxy_to_cxcywh(th_boxes), th_boxes_cxcywh)
+        assert_allclose(th_boxes, HorizontalBoxes.cxcywh_to_xyxy(th_boxes_cxcywh))
         assert_allclose(boxes.cxcywh, th_boxes_cxcywh)
 
     def test_propoerty(self):
@@ -60,19 +57,19 @@ class TestHorizontalBoxes(TestCase):
         th_boxes = torch.Tensor([10, 10, 20, 20]).reshape(1, 1, 4)
         flipped_boxes_th = torch.Tensor([65, 10, 75, 20]).reshape(1, 1, 4)
         boxes = HorizontalBoxes(th_boxes)
-        boxes.flip_(img_shape, direction='horizontal')
+        boxes.flip_(img_shape, direction="horizontal")
         assert_allclose(boxes.tensor, flipped_boxes_th)
         # vertical flip
         th_boxes = torch.Tensor([10, 10, 20, 20]).reshape(1, 1, 4)
         flipped_boxes_th = torch.Tensor([10, 30, 20, 40]).reshape(1, 1, 4)
         boxes = HorizontalBoxes(th_boxes)
-        boxes.flip_(img_shape, direction='vertical')
+        boxes.flip_(img_shape, direction="vertical")
         assert_allclose(boxes.tensor, flipped_boxes_th)
         # diagonal flip
         th_boxes = torch.Tensor([10, 10, 20, 20]).reshape(1, 1, 4)
         flipped_boxes_th = torch.Tensor([65, 30, 75, 40]).reshape(1, 1, 4)
         boxes = HorizontalBoxes(th_boxes)
-        boxes.flip_(img_shape, direction='diagonal')
+        boxes.flip_(img_shape, direction="diagonal")
         assert_allclose(boxes.tensor, flipped_boxes_th)
 
     def test_translate(self):
@@ -96,10 +93,9 @@ class TestHorizontalBoxes(TestCase):
         angle = -45
         boxes = HorizontalBoxes(th_boxes)
         boxes.rotate_(center, angle)
-        rotated_boxes_th = torch.Tensor([
-            15 - 5 * sqrt(2), 15 - 5 * sqrt(2), 15 + 5 * sqrt(2),
-            15 + 5 * sqrt(2)
-        ]).reshape(1, 1, 4)
+        rotated_boxes_th = torch.Tensor(
+            [15 - 5 * sqrt(2), 15 - 5 * sqrt(2), 15 + 5 * sqrt(2), 15 + 5 * sqrt(2)]
+        ).reshape(1, 1, 4)
         assert_allclose(boxes.tensor, rotated_boxes_th)
 
     def test_project(self):
@@ -145,8 +141,9 @@ class TestHorizontalBoxes(TestCase):
         assert_allclose(boxes.tensor, resized_boxes_th)
 
     def test_is_inside(self):
-        th_boxes = torch.Tensor([[10, 10, 20, 20], [-5, -5, 15, 15],
-                                 [45, 45, 55, 55]]).reshape(1, 3, 4)
+        th_boxes = torch.Tensor(
+            [[10, 10, 20, 20], [-5, -5, 15, 15], [45, 45, 55, 55]]
+        ).reshape(1, 3, 4)
         img_shape = [30, 30]
         boxes = HorizontalBoxes(th_boxes)
 

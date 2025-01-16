@@ -26,14 +26,15 @@ class BaseSemanticHead(BaseModule, metaclass=ABCMeta):
             head.
     """
 
-    def __init__(self,
-                 num_classes: int,
-                 seg_rescale_factor: float = 1 / 4.,
-                 loss_seg: ConfigType = dict(
-                     type='CrossEntropyLoss',
-                     ignore_index=255,
-                     loss_weight=1.0),
-                 init_cfg: OptMultiConfig = None) -> None:
+    def __init__(
+        self,
+        num_classes: int,
+        seg_rescale_factor: float = 1 / 4.0,
+        loss_seg: ConfigType = dict(
+            type="CrossEntropyLoss", ignore_index=255, loss_weight=1.0
+        ),
+        init_cfg: OptMultiConfig = None,
+    ) -> None:
         super().__init__(init_cfg=init_cfg)
         self.loss_seg = MODELS.build(loss_seg)
         self.num_classes = num_classes
@@ -51,11 +52,11 @@ class BaseSemanticHead(BaseModule, metaclass=ABCMeta):
                 and predicted scores. Required keys: 'seg_preds'
                 and 'feats'.
         """
-        pass
 
     @abstractmethod
-    def loss(self, x: Union[Tensor, Tuple[Tensor]],
-             batch_data_samples: SampleList) -> Dict[str, Tensor]:
+    def loss(
+        self, x: Union[Tensor, Tuple[Tensor]], batch_data_samples: SampleList
+    ) -> Dict[str, Tensor]:
         """
         Args:
             x (Union[Tensor, Tuple[Tensor]]): Feature maps.
@@ -69,12 +70,13 @@ class BaseSemanticHead(BaseModule, metaclass=ABCMeta):
         Returns:
             Dict[str, Tensor]: The loss of semantic head.
         """
-        pass
 
-    def predict(self,
-                x: Union[Tensor, Tuple[Tensor]],
-                batch_img_metas: List[dict],
-                rescale: bool = False) -> List[Tensor]:
+    def predict(
+        self,
+        x: Union[Tensor, Tuple[Tensor]],
+        batch_img_metas: List[dict],
+        rescale: bool = False,
+    ) -> List[Tensor]:
         """Test without Augmentation.
 
         Args:
@@ -86,26 +88,25 @@ class BaseSemanticHead(BaseModule, metaclass=ABCMeta):
         Returns:
             list[Tensor]: semantic segmentation logits.
         """
-        seg_preds = self.forward(x)['seg_preds']
+        seg_preds = self.forward(x)["seg_preds"]
         seg_preds = F.interpolate(
             seg_preds,
-            size=batch_img_metas[0]['batch_input_shape'],
-            mode='bilinear',
-            align_corners=False)
+            size=batch_img_metas[0]["batch_input_shape"],
+            mode="bilinear",
+            align_corners=False,
+        )
         seg_preds = [seg_preds[i] for i in range(len(batch_img_metas))]
 
         if rescale:
             seg_pred_list = []
             for i in range(len(batch_img_metas)):
-                h, w = batch_img_metas[i]['img_shape']
+                h, w = batch_img_metas[i]["img_shape"]
                 seg_pred = seg_preds[i][:, :h, :w]
 
-                h, w = batch_img_metas[i]['ori_shape']
+                h, w = batch_img_metas[i]["ori_shape"]
                 seg_pred = F.interpolate(
-                    seg_pred[None],
-                    size=(h, w),
-                    mode='bilinear',
-                    align_corners=False)[0]
+                    seg_pred[None], size=(h, w), mode="bilinear", align_corners=False
+                )[0]
                 seg_pred_list.append(seg_pred)
         else:
             seg_pred_list = seg_preds

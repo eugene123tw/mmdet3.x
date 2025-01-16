@@ -16,8 +16,7 @@ except ImportError:
 from mmdet.registry import MODELS
 
 
-def generate_masks_with_special_tokens_and_transfer_map(
-        tokenized, special_tokens_list):
+def generate_masks_with_special_tokens_and_transfer_map(tokenized, special_tokens_list):
     """Generate attention mask between each pair of special tokens.
 
     Only token pairs in between two special tokens are attended to
@@ -36,12 +35,11 @@ def generate_masks_with_special_tokens_and_transfer_map(
           The id starts from 0 whenenver a special token is encountered.
           Shape: [bs, num_token]
     """
-    input_ids = tokenized['input_ids']
+    input_ids = tokenized["input_ids"]
     bs, num_token = input_ids.shape
     # special_tokens_mask:
     # bs, num_token. 1 for special tokens. 0 for normal tokens
-    special_tokens_mask = torch.zeros((bs, num_token),
-                                      device=input_ids.device).bool()
+    special_tokens_mask = torch.zeros((bs, num_token), device=input_ids.device).bool()
 
     for special_token in special_tokens_list:
         special_tokens_mask |= input_ids == special_token
@@ -51,9 +49,11 @@ def generate_masks_with_special_tokens_and_transfer_map(
 
     # generate attention mask and positional ids
     attention_mask = (
-        torch.eye(num_token,
-                  device=input_ids.device).bool().unsqueeze(0).repeat(
-                      bs, 1, 1))
+        torch.eye(num_token, device=input_ids.device)
+        .bool()
+        .unsqueeze(0)
+        .repeat(bs, 1, 1)
+    )
     position_ids = torch.zeros((bs, num_token), device=input_ids.device)
     previous_col = 0
     for i in range(idxs.shape[0]):
@@ -62,10 +62,12 @@ def generate_masks_with_special_tokens_and_transfer_map(
             attention_mask[row, col, col] = True
             position_ids[row, col] = 0
         else:
-            attention_mask[row, previous_col + 1:col + 1,
-                           previous_col + 1:col + 1] = True
-            position_ids[row, previous_col + 1:col + 1] = torch.arange(
-                0, col - previous_col, device=input_ids.device)
+            attention_mask[
+                row, previous_col + 1 : col + 1, previous_col + 1 : col + 1
+            ] = True
+            position_ids[row, previous_col + 1 : col + 1] = torch.arange(
+                0, col - previous_col, device=input_ids.device
+            )
         previous_col = col
 
     return attention_mask, position_ids.to(torch.long)
@@ -96,43 +98,53 @@ class BertModel(BaseModel):
              Defaults to False.
     """
 
-    def __init__(self,
-                 name: str = 'bert-base-uncased',
-                 max_tokens: int = 256,
-                 pad_to_max: bool = True,
-                 use_sub_sentence_represent: bool = False,
-                 special_tokens_list: list = None,
-                 add_pooling_layer: bool = False,
-                 num_layers_of_embedded: int = 1,
-                 use_checkpoint: bool = False,
-                 **kwargs) -> None:
-
+    def __init__(
+        self,
+        name: str = "bert-base-uncased",
+        max_tokens: int = 256,
+        pad_to_max: bool = True,
+        use_sub_sentence_represent: bool = False,
+        special_tokens_list: list = None,
+        add_pooling_layer: bool = False,
+        num_layers_of_embedded: int = 1,
+        use_checkpoint: bool = False,
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         self.max_tokens = max_tokens
         self.pad_to_max = pad_to_max
 
         if AutoTokenizer is None:
             raise RuntimeError(
-                'transformers is not installed, please install it by: '
-                'pip install transformers.')
+                "transformers is not installed, please install it by: "
+                "pip install transformers."
+            )
 
         self.tokenizer = AutoTokenizer.from_pretrained(name)
         self.language_backbone = nn.Sequential(
-            OrderedDict([('body',
-                          BertEncoder(
-                              name,
-                              add_pooling_layer=add_pooling_layer,
-                              num_layers_of_embedded=num_layers_of_embedded,
-                              use_checkpoint=use_checkpoint))]))
+            OrderedDict(
+                [
+                    (
+                        "body",
+                        BertEncoder(
+                            name,
+                            add_pooling_layer=add_pooling_layer,
+                            num_layers_of_embedded=num_layers_of_embedded,
+                            use_checkpoint=use_checkpoint,
+                        ),
+                    )
+                ]
+            )
+        )
 
         self.use_sub_sentence_represent = use_sub_sentence_represent
         if self.use_sub_sentence_represent:
-            assert special_tokens_list is not None, \
-                'special_tokens should not be None \
-                    if use_sub_sentence_represent is True'
+            assert special_tokens_list is not None, "special_tokens should not be None \
+                    if use_sub_sentence_represent is True"
 
             self.special_tokens = self.tokenizer.convert_tokens_to_ids(
-                special_tokens_list)
+                special_tokens_list
+            )
 
     def forward(self, captions: Sequence[str], **kwargs) -> dict:
         """Forward function."""
@@ -140,16 +152,20 @@ class BertModel(BaseModel):
         tokenized = self.tokenizer.batch_encode_plus(
             captions,
             max_length=self.max_tokens,
-            padding='max_length' if self.pad_to_max else 'longest',
+            padding="max_length" if self.pad_to_max else "longest",
             return_special_tokens_mask=True,
-            return_tensors='pt',
-            truncation=True).to(device)
+            return_tensors="pt",
+            truncation=True,
+        ).to(device)
         input_ids = tokenized.input_ids
         if self.use_sub_sentence_represent:
-            attention_mask, position_ids = \
-                generate_masks_with_special_tokens_and_transfer_map(
-                    tokenized, self.special_tokens)
-            token_type_ids = tokenized['token_type_ids']
+            (
+                attention_mask,
+                position_ids,
+            ) = generate_masks_with_special_tokens_and_transfer_map(
+                tokenized, self.special_tokens
+            )
+            token_type_ids = tokenized["token_type_ids"]
 
         else:
             attention_mask = tokenized.attention_mask
@@ -157,16 +173,15 @@ class BertModel(BaseModel):
             token_type_ids = None
 
         tokenizer_input = {
-            'input_ids': input_ids,
-            'attention_mask': attention_mask,
-            'position_ids': position_ids,
-            'token_type_ids': token_type_ids
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "position_ids": position_ids,
+            "token_type_ids": token_type_ids,
         }
         language_dict_features = self.language_backbone(tokenizer_input)
         if self.use_sub_sentence_represent:
-            language_dict_features['position_ids'] = position_ids
-            language_dict_features[
-                'text_token_mask'] = tokenized.attention_mask.bool()
+            language_dict_features["position_ids"] = position_ids
+            language_dict_features["text_token_mask"] = tokenized.attention_mask.bool()
         return language_dict_features
 
 
@@ -183,39 +198,44 @@ class BertEncoder(nn.Module):
                 Defaults to False.
     """
 
-    def __init__(self,
-                 name: str,
-                 add_pooling_layer: bool = False,
-                 num_layers_of_embedded: int = 1,
-                 use_checkpoint: bool = False):
+    def __init__(
+        self,
+        name: str,
+        add_pooling_layer: bool = False,
+        num_layers_of_embedded: int = 1,
+        use_checkpoint: bool = False,
+    ):
         super().__init__()
         if BertConfig is None:
             raise RuntimeError(
-                'transformers is not installed, please install it by: '
-                'pip install transformers.')
+                "transformers is not installed, please install it by: "
+                "pip install transformers."
+            )
         config = BertConfig.from_pretrained(name)
         config.gradient_checkpointing = use_checkpoint
         # only encoder
         self.model = HFBertModel.from_pretrained(
-            name, add_pooling_layer=add_pooling_layer, config=config)
+            name, add_pooling_layer=add_pooling_layer, config=config
+        )
         self.language_dim = config.hidden_size
         self.num_layers_of_embedded = num_layers_of_embedded
 
     def forward(self, x) -> dict:
-        mask = x['attention_mask']
+        mask = x["attention_mask"]
 
         outputs = self.model(
-            input_ids=x['input_ids'],
+            input_ids=x["input_ids"],
             attention_mask=mask,
-            position_ids=x['position_ids'],
-            token_type_ids=x['token_type_ids'],
+            position_ids=x["position_ids"],
+            token_type_ids=x["token_type_ids"],
             output_hidden_states=True,
         )
 
         # outputs has 13 layers, 1 input layer and 12 hidden layers
         encoded_layers = outputs.hidden_states[1:]
-        features = torch.stack(encoded_layers[-self.num_layers_of_embedded:],
-                               1).mean(1)
+        features = torch.stack(encoded_layers[-self.num_layers_of_embedded :], 1).mean(
+            1
+        )
         # language embedding has shape [len(phrase), seq_len, language_dim]
         features = features / self.num_layers_of_embedded
         if mask.dim() == 2:
@@ -223,9 +243,5 @@ class BertEncoder(nn.Module):
         else:
             embedded = features
 
-        results = {
-            'embedded': embedded,
-            'masks': mask,
-            'hidden': encoded_layers[-1]
-        }
+        results = {"embedded": embedded, "masks": mask, "hidden": encoded_layers[-1]}
         return results

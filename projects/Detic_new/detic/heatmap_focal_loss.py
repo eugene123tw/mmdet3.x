@@ -10,20 +10,19 @@ from mmdet.registry import MODELS
 
 # support class-agnostic heatmap_focal_loss
 def heatmap_focal_loss_with_pos_inds(
-        pred: Tensor,
-        targets: Tensor,
-        pos_inds: Tensor,
-        alpha: float = 2.0,
-        beta: float = 4.0,
-        gamma: float = 4.0,
-        sigmoid_clamp: float = 1e-4,
-        ignore_high_fp: float = -1.0,
-        pos_weight: float = 1.0,
-        neg_weight: float = 1.0,
-        avg_factor: Optional[Union[int, float]] = None) -> Tensor:
-
-    pred = torch.clamp(
-        pred.sigmoid_(), min=sigmoid_clamp, max=1 - sigmoid_clamp)
+    pred: Tensor,
+    targets: Tensor,
+    pos_inds: Tensor,
+    alpha: float = 2.0,
+    beta: float = 4.0,
+    gamma: float = 4.0,
+    sigmoid_clamp: float = 1e-4,
+    ignore_high_fp: float = -1.0,
+    pos_weight: float = 1.0,
+    neg_weight: float = 1.0,
+    avg_factor: Optional[Union[int, float]] = None,
+) -> Tensor:
+    pred = torch.clamp(pred.sigmoid_(), min=sigmoid_clamp, max=1 - sigmoid_clamp)
 
     neg_weights = torch.pow(1 - targets, beta)
 
@@ -87,11 +86,13 @@ class HeatmapFocalLoss(nn.Module):
         self.pos_weight = pos_weight
         self.neg_weight = neg_weight
 
-    def forward(self,
-                pred: Tensor,
-                target: Tensor,
-                pos_inds: Optional[Tensor] = None,
-                avg_factor: Optional[Union[int, float]] = None) -> Tensor:
+    def forward(
+        self,
+        pred: Tensor,
+        target: Tensor,
+        pos_inds: Optional[Tensor] = None,
+        avg_factor: Optional[Union[int, float]] = None,
+    ) -> Tensor:
         """Forward function.
 
         If you want to manually determine which positions are
@@ -127,5 +128,6 @@ class HeatmapFocalLoss(nn.Module):
             ignore_high_fp=self.ignore_high_fp,
             pos_weight=self.pos_weight,
             neg_weight=self.neg_weight,
-            avg_factor=avg_factor)
+            avg_factor=avg_factor,
+        )
         return pos_loss, neg_loss

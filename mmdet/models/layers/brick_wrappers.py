@@ -6,12 +6,12 @@ from mmcv.cnn.bricks.wrappers import NewEmptyTensorOp, obsolete_torch_version
 
 from mmdet.registry import MODELS
 
-if torch.__version__ == 'parrots':
+if torch.__version__ == "parrots":
     TORCH_VERSION = torch.__version__
 else:
     # torch.__version__ could be 1.3.1+cu92, we only need the first two
     # for comparison
-    TORCH_VERSION = tuple(int(x) for x in torch.__version__.split('.')[:2])
+    TORCH_VERSION = tuple(int(x) for x in torch.__version__.split(".")[:2])
 
 
 def adaptive_avg_pool2d(input, output_size):
@@ -43,8 +43,7 @@ class AdaptiveAvgPool2d(nn.AdaptiveAvgPool2d):
             else:
                 output_size = [
                     v if v is not None else d
-                    for v, d in zip(output_size,
-                                    x.size()[-2:])
+                    for v, d in zip(output_size, x.size()[-2:])
                 ]
             output_size = [*x.shape[:2], *output_size]
             empty = NewEmptyTensorOp.apply(x, output_size)
@@ -55,7 +54,7 @@ class AdaptiveAvgPool2d(nn.AdaptiveAvgPool2d):
 
 # Modified from
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/layers/batch_norm.py#L13 # noqa
-@MODELS.register_module('FrozenBN')
+@MODELS.register_module("FrozenBN")
 class FrozenBatchNorm2d(nn.Module):
     """BatchNorm2d where the batch statistics and the affine parameters are
     fixed.
@@ -74,10 +73,10 @@ class FrozenBatchNorm2d(nn.Module):
         super().__init__()
         self.num_features = num_features
         self.eps = eps
-        self.register_buffer('weight', torch.ones(num_features))
-        self.register_buffer('bias', torch.zeros(num_features))
-        self.register_buffer('running_mean', torch.zeros(num_features))
-        self.register_buffer('running_var', torch.ones(num_features) - eps)
+        self.register_buffer("weight", torch.ones(num_features))
+        self.register_buffer("bias", torch.zeros(num_features))
+        self.register_buffer("running_mean", torch.zeros(num_features))
+        self.register_buffer("running_var", torch.ones(num_features) - eps)
 
     def forward(self, x):
         if x.requires_grad:
@@ -104,8 +103,9 @@ class FrozenBatchNorm2d(nn.Module):
             )
 
     def __repr__(self):
-        return 'FrozenBatchNorm2d(num_features={}, eps={})'.format(
-            self.num_features, self.eps)
+        return "FrozenBatchNorm2d(num_features={}, eps={})".format(
+            self.num_features, self.eps
+        )
 
     @classmethod
     def convert_frozen_batchnorm(cls, module):

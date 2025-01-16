@@ -7,7 +7,7 @@
 from mmengine.config import read_base
 
 with read_base():
-    from .lsj_100e_coco_instance import *
+    from .lsj_100e_coco_instance import LinearLR, MultiStepLR, train_dataloader
 
 # 8x25=200e
 train_dataloader.update(dict(dataset=dict(times=8)))
@@ -16,10 +16,6 @@ train_dataloader.update(dict(dataset=dict(times=8)))
 param_scheduler = [
     dict(type=LinearLR, start_factor=0.067, by_epoch=False, begin=0, end=1000),
     dict(
-        type=MultiStepLR,
-        begin=0,
-        end=25,
-        by_epoch=True,
-        milestones=[22, 24],
-        gamma=0.1)
+        type=MultiStepLR, begin=0, end=25, by_epoch=True, milestones=[22, 24], gamma=0.1
+    ),
 ]

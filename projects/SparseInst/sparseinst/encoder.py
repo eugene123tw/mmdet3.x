@@ -9,18 +9,15 @@ from mmdet.registry import MODELS
 
 
 class PyramidPoolingModule(nn.Module):
-
-    def __init__(self,
-                 in_channels,
-                 channels=512,
-                 sizes=(1, 2, 3, 6),
-                 act_cfg=dict(type='ReLU')):
+    def __init__(
+        self, in_channels, channels=512, sizes=(1, 2, 3, 6), act_cfg=dict(type="ReLU")
+    ):
         super().__init__()
         self.stages = []
         self.stages = nn.ModuleList(
-            [self._make_stage(in_channels, channels, size) for size in sizes])
-        self.bottleneck = nn.Conv2d(in_channels + len(sizes) * channels,
-                                    in_channels, 1)
+            [self._make_stage(in_channels, channels, size) for size in sizes]
+        )
+        self.bottleneck = nn.Conv2d(in_channels + len(sizes) * channels, in_channels, 1)
         self.act = MODELS.build(act_cfg)
 
     def _make_stage(self, features, out_features, size):
@@ -34,8 +31,10 @@ class PyramidPoolingModule(nn.Module):
             F.interpolate(
                 input=self.act(stage(feats)),
                 size=(h, w),
-                mode='bilinear',
-                align_corners=False) for stage in self.stages
+                mode="bilinear",
+                align_corners=False,
+            )
+            for stage in self.stages
         ] + [feats]
         out = self.act(self.bottleneck(torch.cat(priors, 1)))
         return out
@@ -50,11 +49,9 @@ class InstanceContextEncoder(nn.Module):
     3. multi-scale fusion
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels=256,
-                 with_ppm=True,
-                 act_cfg=dict(type='ReLU')):
+    def __init__(
+        self, in_channels, out_channels=256, with_ppm=True, act_cfg=dict(type="ReLU")
+    ):
         super().__init__()
         self.num_channels = out_channels
         self.in_channels = in_channels
@@ -63,8 +60,7 @@ class InstanceContextEncoder(nn.Module):
         fpn_outputs = []
         for in_channel in reversed(self.in_channels):
             lateral_conv = nn.Conv2d(in_channel, self.num_channels, 1)
-            output_conv = nn.Conv2d(
-                self.num_channels, self.num_channels, 3, padding=1)
+            output_conv = nn.Conv2d(self.num_channels, self.num_channels, 3, padding=1)
             caffe2_xavier_init(lateral_conv)
             caffe2_xavier_init(output_conv)
             fpn_laterals.append(lateral_conv)
@@ -74,7 +70,8 @@ class InstanceContextEncoder(nn.Module):
         # ppm
         if self.with_ppm:
             self.ppm = PyramidPoolingModule(
-                self.num_channels, self.num_channels // 4, act_cfg=act_cfg)
+                self.num_channels, self.num_channels // 4, act_cfg=act_cfg
+            )
         # final fusion
         self.fusion = nn.Conv2d(self.num_channels * 3, self.num_channels, 1)
         kaiming_init(self.fusion)
@@ -85,17 +82,18 @@ class InstanceContextEncoder(nn.Module):
         if self.with_ppm:
             prev_features = self.ppm(prev_features)
         outputs = [self.fpn_outputs[0](prev_features)]
-        for feature, lat_conv, output_conv in zip(features[1:],
-                                                  self.fpn_laterals[1:],
-                                                  self.fpn_outputs[1:]):
+        for feature, lat_conv, output_conv in zip(
+            features[1:], self.fpn_laterals[1:], self.fpn_outputs[1:]
+        ):
             lat_features = lat_conv(feature)
             top_down_features = F.interpolate(
-                prev_features, scale_factor=2.0, mode='nearest')
+                prev_features, scale_factor=2.0, mode="nearest"
+            )
             prev_features = lat_features + top_down_features
             outputs.insert(0, output_conv(prev_features))
         size = outputs[0].shape[2:]
         features = [outputs[0]] + [
-            F.interpolate(x, size, mode='bilinear', align_corners=False)
+            F.interpolate(x, size, mode="bilinear", align_corners=False)
             for x in outputs[1:]
         ]
         features = self.fusion(torch.cat(features, dim=1))

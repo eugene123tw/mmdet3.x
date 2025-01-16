@@ -14,22 +14,23 @@ from mmengine.fileio import get
 
 try:
     import cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling as CSEval  # noqa: E501
-    from cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import \
-        CArgs  # noqa: E501
+    from cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import CArgs  # noqa: E501
     from cityscapesscripts.evaluation.instance import Instance
-    from cityscapesscripts.helpers.csHelpers import (id2label, labels,
-                                                     writeDict2JSON)
+    from cityscapesscripts.helpers.csHelpers import id2label, labels, writeDict2JSON
+
     HAS_CITYSCAPESAPI = True
 except ImportError:
     CArgs = object
     HAS_CITYSCAPESAPI = False
 
 
-def evaluateImgLists(prediction_list: list,
-                     groundtruth_list: list,
-                     args: CArgs,
-                     backend_args: Optional[dict] = None,
-                     dump_matches: bool = False) -> dict:
+def evaluateImgLists(
+    prediction_list: list,
+    groundtruth_list: list,
+    args: CArgs,
+    backend_args: Optional[dict] = None,
+    dump_matches: bool = False,
+) -> dict:
     """A wrapper of obj:``cityscapesscripts.evaluation.
 
     evalInstanceLevelSemanticLabeling.evaluateImgLists``. Support loading
@@ -47,20 +48,22 @@ def evaluateImgLists(prediction_list: list,
         dict: The computed metric.
     """
     if not HAS_CITYSCAPESAPI:
-        raise RuntimeError('Failed to import `cityscapesscripts`.'
-                           'Please try to install official '
-                           'cityscapesscripts by '
-                           '"pip install cityscapesscripts"')
+        raise RuntimeError(
+            "Failed to import `cityscapesscripts`."
+            "Please try to install official "
+            "cityscapesscripts by "
+            '"pip install cityscapesscripts"'
+        )
     # determine labels of interest
     CSEval.setInstanceLabels(args)
     # get dictionary of all ground truth instances
-    gt_instances = getGtInstances(
-        groundtruth_list, args, backend_args=backend_args)
+    gt_instances = getGtInstances(groundtruth_list, args, backend_args=backend_args)
     # match predictions and ground truth
-    matches = matchGtWithPreds(prediction_list, groundtruth_list, gt_instances,
-                               args, backend_args)
+    matches = matchGtWithPreds(
+        prediction_list, groundtruth_list, gt_instances, args, backend_args
+    )
     if dump_matches:
-        CSEval.writeDict2JSON(matches, 'matches.json')
+        CSEval.writeDict2JSON(matches, "matches.json")
     # evaluate matches
     apScores = CSEval.evaluateMatches(matches, args)
     # averages
@@ -79,11 +82,13 @@ def evaluateImgLists(prediction_list: list,
     return resDict
 
 
-def matchGtWithPreds(prediction_list: list,
-                     groundtruth_list: list,
-                     gt_instances: dict,
-                     args: CArgs,
-                     backend_args=None):
+def matchGtWithPreds(
+    prediction_list: list,
+    groundtruth_list: list,
+    gt_instances: dict,
+    args: CArgs,
+    backend_args=None,
+):
     """A wrapper of obj:``cityscapesscripts.evaluation.
 
     evalInstanceLevelSemanticLabeling.matchGtWithPreds``. Support loading
@@ -101,47 +106,49 @@ def matchGtWithPreds(prediction_list: list,
         dict: The processed prediction and groundtruth result.
     """
     if not HAS_CITYSCAPESAPI:
-        raise RuntimeError('Failed to import `cityscapesscripts`.'
-                           'Please try to install official '
-                           'cityscapesscripts by '
-                           '"pip install cityscapesscripts"')
+        raise RuntimeError(
+            "Failed to import `cityscapesscripts`."
+            "Please try to install official "
+            "cityscapesscripts by "
+            '"pip install cityscapesscripts"'
+        )
     matches: dict = dict()
     if not args.quiet:
-        print(f'Matching {len(prediction_list)} pairs of images...')
+        print(f"Matching {len(prediction_list)} pairs of images...")
 
     count = 0
-    for (pred, gt) in zip(prediction_list, groundtruth_list):
+    for pred, gt in zip(prediction_list, groundtruth_list):
         # Read input files
         gt_image = readGTImage(gt, backend_args)
         pred_info = readPredInfo(pred)
         # Get and filter ground truth instances
         unfiltered_instances = gt_instances[gt]
-        cur_gt_instances_orig = CSEval.filterGtInstances(
-            unfiltered_instances, args)
+        cur_gt_instances_orig = CSEval.filterGtInstances(unfiltered_instances, args)
 
         # Try to assign all predictions
-        (cur_gt_instances,
-         cur_pred_instances) = CSEval.assignGt2Preds(cur_gt_instances_orig,
-                                                     gt_image, pred_info, args)
+        (cur_gt_instances, cur_pred_instances) = CSEval.assignGt2Preds(
+            cur_gt_instances_orig, gt_image, pred_info, args
+        )
 
         # append to global dict
         matches[gt] = {}
-        matches[gt]['groundTruth'] = cur_gt_instances
-        matches[gt]['prediction'] = cur_pred_instances
+        matches[gt]["groundTruth"] = cur_gt_instances
+        matches[gt]["prediction"] = cur_pred_instances
 
         count += 1
         if not args.quiet:
-            print(f'\rImages Processed: {count}', end=' ')
+            print(f"\rImages Processed: {count}", end=" ")
             sys.stdout.flush()
 
     if not args.quiet:
-        print('')
+        print("")
 
     return matches
 
 
-def readGTImage(image_file: Union[str, Path],
-                backend_args: Optional[dict] = None) -> np.ndarray:
+def readGTImage(
+    image_file: Union[str, Path], backend_args: Optional[dict] = None
+) -> np.ndarray:
     """Read an image from path.
 
     Same as obj:``cityscapesscripts.evaluation.
@@ -159,7 +166,7 @@ def readGTImage(image_file: Union[str, Path],
         np.ndarray: The groundtruth image.
     """
     img_bytes = get(image_file, backend_args=backend_args)
-    img = mmcv.imfrombytes(img_bytes, flag='unchanged', backend='pillow')
+    img = mmcv.imfrombytes(img_bytes, flag="unchanged", backend="pillow")
     return img
 
 
@@ -173,41 +180,45 @@ def readPredInfo(prediction_file: str) -> dict:
         dict: The processed prediction results.
     """
     if not HAS_CITYSCAPESAPI:
-        raise RuntimeError('Failed to import `cityscapesscripts`.'
-                           'Please try to install official '
-                           'cityscapesscripts by '
-                           '"pip install cityscapesscripts"')
+        raise RuntimeError(
+            "Failed to import `cityscapesscripts`."
+            "Please try to install official "
+            "cityscapesscripts by "
+            '"pip install cityscapesscripts"'
+        )
     printError = CSEval.printError
 
     predInfo = {}
-    if (not os.path.isfile(prediction_file)):
-        printError(f"Infofile '{prediction_file}' "
-                   'for the predictions not found.')
+    if not os.path.isfile(prediction_file):
+        printError(f"Infofile '{prediction_file}' " "for the predictions not found.")
     with open(prediction_file) as f:
         for line in f:
-            splittedLine = line.split(' ')
+            splittedLine = line.split(" ")
             if len(splittedLine) != 3:
-                printError('Invalid prediction file. Expected content: '
-                           'relPathPrediction1 labelIDPrediction1 '
-                           'confidencePrediction1')
+                printError(
+                    "Invalid prediction file. Expected content: "
+                    "relPathPrediction1 labelIDPrediction1 "
+                    "confidencePrediction1"
+                )
             if os.path.isabs(splittedLine[0]):
-                printError('Invalid prediction file. First entry in each '
-                           'line must be a relative path.')
+                printError(
+                    "Invalid prediction file. First entry in each "
+                    "line must be a relative path."
+                )
 
-            filename = os.path.join(
-                os.path.dirname(prediction_file), splittedLine[0])
+            filename = os.path.join(os.path.dirname(prediction_file), splittedLine[0])
 
             imageInfo = {}
-            imageInfo['labelID'] = int(float(splittedLine[1]))
-            imageInfo['conf'] = float(splittedLine[2])  # type: ignore
+            imageInfo["labelID"] = int(float(splittedLine[1]))
+            imageInfo["conf"] = float(splittedLine[2])  # type: ignore
             predInfo[filename] = imageInfo
 
     return predInfo
 
 
-def getGtInstances(groundtruth_list: list,
-                   args: CArgs,
-                   backend_args: Optional[dict] = None) -> dict:
+def getGtInstances(
+    groundtruth_list: list, args: CArgs, backend_args: Optional[dict] = None
+) -> dict:
     """A wrapper of obj:``cityscapesscripts.evaluation.
 
     evalInstanceLevelSemanticLabeling.getGtInstances``. Support loading
@@ -223,30 +234,31 @@ def getGtInstances(groundtruth_list: list,
         dict: The computed metric.
     """
     if not HAS_CITYSCAPESAPI:
-        raise RuntimeError('Failed to import `cityscapesscripts`.'
-                           'Please try to install official '
-                           'cityscapesscripts by '
-                           '"pip install cityscapesscripts"')
+        raise RuntimeError(
+            "Failed to import `cityscapesscripts`."
+            "Please try to install official "
+            "cityscapesscripts by "
+            '"pip install cityscapesscripts"'
+        )
     # if there is a global statistics json, then load it
-    if (os.path.isfile(args.gtInstancesFile)):
+    if os.path.isfile(args.gtInstancesFile):
         if not args.quiet:
-            print('Loading ground truth instances from JSON.')
+            print("Loading ground truth instances from JSON.")
         with open(args.gtInstancesFile) as json_file:
             gt_instances = json.load(json_file)
     # otherwise create it
     else:
-        if (not args.quiet):
-            print('Creating ground truth instances from png files.')
-        gt_instances = instances2dict(
-            groundtruth_list, args, backend_args=backend_args)
+        if not args.quiet:
+            print("Creating ground truth instances from png files.")
+        gt_instances = instances2dict(groundtruth_list, args, backend_args=backend_args)
         writeDict2JSON(gt_instances, args.gtInstancesFile)
 
     return gt_instances
 
 
-def instances2dict(image_list: list,
-                   args: CArgs,
-                   backend_args: Optional[dict] = None) -> dict:
+def instances2dict(
+    image_list: list, args: CArgs, backend_args: Optional[dict] = None
+) -> dict:
     """A wrapper of obj:``cityscapesscripts.evaluation.
 
     evalInstanceLevelSemanticLabeling.instances2dict``. Support loading
@@ -262,10 +274,12 @@ def instances2dict(image_list: list,
         dict: The processed groundtruth results.
     """
     if not HAS_CITYSCAPESAPI:
-        raise RuntimeError('Failed to import `cityscapesscripts`.'
-                           'Please try to install official '
-                           'cityscapesscripts by '
-                           '"pip install cityscapesscripts"')
+        raise RuntimeError(
+            "Failed to import `cityscapesscripts`."
+            "Please try to install official "
+            "cityscapesscripts by "
+            '"pip install cityscapesscripts"'
+        )
     imgCount = 0
     instanceDict = {}
 
@@ -273,12 +287,12 @@ def instances2dict(image_list: list,
         image_list = [image_list]
 
     if not args.quiet:
-        print(f'Processing {len(image_list)} images...')
+        print(f"Processing {len(image_list)} images...")
 
     for image_name in image_list:
         # Load image
         img_bytes = get(image_name, backend_args=backend_args)
-        imgNp = mmcv.imfrombytes(img_bytes, flag='unchanged', backend='pillow')
+        imgNp = mmcv.imfrombytes(img_bytes, flag="unchanged", backend="pillow")
 
         # Initialize label categories
         instances: dict = {}
@@ -289,14 +303,13 @@ def instances2dict(image_list: list,
         for instanceId in np.unique(imgNp):
             instanceObj = Instance(imgNp, instanceId)
 
-            instances[id2label[instanceObj.labelID].name].append(
-                instanceObj.toDict())
+            instances[id2label[instanceObj.labelID].name].append(instanceObj.toDict())
 
         instanceDict[image_name] = instances
         imgCount += 1
 
         if not args.quiet:
-            print(f'\rImages Processed: {imgCount}', end=' ')
+            print(f"\rImages Processed: {imgCount}", end=" ")
             sys.stdout.flush()
 
     return instanceDict

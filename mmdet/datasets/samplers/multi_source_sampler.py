@@ -61,23 +61,28 @@ class MultiSourceSampler(Sampler):
         >>>         dataset=dataset)
     """
 
-    def __init__(self,
-                 dataset: Sized,
-                 batch_size: int,
-                 source_ratio: List[Union[int, float]],
-                 shuffle: bool = True,
-                 seed: Optional[int] = None) -> None:
-
-        assert hasattr(dataset, 'cumulative_sizes'),\
-            f'The dataset must be ConcatDataset, but get {dataset}'
-        assert isinstance(batch_size, int) and batch_size > 0, \
-            'batch_size must be a positive integer value, ' \
-            f'but got batch_size={batch_size}'
-        assert isinstance(source_ratio, list), \
-            f'source_ratio must be a list, but got source_ratio={source_ratio}'
-        assert len(source_ratio) == len(dataset.cumulative_sizes), \
-            'The length of source_ratio must be equal to ' \
-            f'the number of datasets, but got source_ratio={source_ratio}'
+    def __init__(
+        self,
+        dataset: Sized,
+        batch_size: int,
+        source_ratio: List[Union[int, float]],
+        shuffle: bool = True,
+        seed: Optional[int] = None,
+    ) -> None:
+        assert hasattr(
+            dataset, "cumulative_sizes"
+        ), f"The dataset must be ConcatDataset, but get {dataset}"
+        assert isinstance(batch_size, int) and batch_size > 0, (
+            "batch_size must be a positive integer value, "
+            f"but got batch_size={batch_size}"
+        )
+        assert isinstance(
+            source_ratio, list
+        ), f"source_ratio must be a list, but got source_ratio={source_ratio}"
+        assert len(source_ratio) == len(dataset.cumulative_sizes), (
+            "The length of source_ratio must be equal to "
+            f"the number of datasets, but got source_ratio={source_ratio}"
+        )
 
         rank, world_size = get_dist_info()
         self.rank = rank
@@ -93,9 +98,10 @@ class MultiSourceSampler(Sampler):
         ]
         self.num_per_source[0] = batch_size - sum(self.num_per_source[1:])
 
-        assert sum(self.num_per_source) == batch_size, \
-            'The sum of num_per_source must be equal to ' \
-            f'batch_size, but get {self.num_per_source}'
+        assert sum(self.num_per_source) == batch_size, (
+            "The sum of num_per_source must be equal to "
+            f"batch_size, but get {self.num_per_source}"
+        )
 
         self.seed = sync_random_seed() if seed is None else seed
         self.shuffle = shuffle
@@ -117,8 +123,8 @@ class MultiSourceSampler(Sampler):
     def _indices_of_rank(self, sample_size: int) -> Iterator[int]:
         """Slice the infinite indices by rank."""
         yield from itertools.islice(
-            self._infinite_indices(sample_size), self.rank, None,
-            self.world_size)
+            self._infinite_indices(sample_size), self.rank, None, self.world_size
+        )
 
     def __iter__(self) -> Iterator[int]:
         batch_buffer = []
@@ -139,7 +145,6 @@ class MultiSourceSampler(Sampler):
 
     def set_epoch(self, epoch: int) -> None:
         """Not supported in `epoch-based runner."""
-        pass
 
 
 @DATA_SAMPLERS.register_module()
@@ -159,25 +164,30 @@ class GroupMultiSourceSampler(MultiSourceSampler):
             Defaults to None.
     """
 
-    def __init__(self,
-                 dataset: BaseDataset,
-                 batch_size: int,
-                 source_ratio: List[Union[int, float]],
-                 shuffle: bool = True,
-                 seed: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        dataset: BaseDataset,
+        batch_size: int,
+        source_ratio: List[Union[int, float]],
+        shuffle: bool = True,
+        seed: Optional[int] = None,
+    ) -> None:
         super().__init__(
             dataset=dataset,
             batch_size=batch_size,
             source_ratio=source_ratio,
             shuffle=shuffle,
-            seed=seed)
+            seed=seed,
+        )
 
         self._get_source_group_info()
-        self.group_source2inds = [{
-            source:
-            self._indices_of_rank(self.group2size_per_source[source][group])
-            for source in range(len(dataset.datasets))
-        } for group in range(len(self.group_ratio))]
+        self.group_source2inds = [
+            {
+                source: self._indices_of_rank(self.group2size_per_source[source][group])
+                for source in range(len(dataset.datasets))
+            }
+            for group in range(len(self.group_ratio))
+        ]
 
     def _get_source_group_info(self) -> None:
         self.group2size_per_source = [{0: 0, 1: 0}, {0: 0, 1: 0}]
@@ -185,7 +195,7 @@ class GroupMultiSourceSampler(MultiSourceSampler):
         for source, dataset in enumerate(self.dataset.datasets):
             for idx in range(len(dataset)):
                 data_info = dataset.get_data_info(idx)
-                width, height = data_info['width'], data_info['height']
+                width, height = data_info["width"], data_info["height"]
                 group = 0 if width < height else 1
                 self.group2size_per_source[source][group] += 1
                 self.group2inds_per_source[source][group].append(idx)
@@ -200,12 +210,15 @@ class GroupMultiSourceSampler(MultiSourceSampler):
         batch_buffer = []
         while True:
             group = np.random.choice(
-                list(range(len(self.group_ratio))), p=self.group_ratio)
+                list(range(len(self.group_ratio))), p=self.group_ratio
+            )
             for source, num in enumerate(self.num_per_source):
                 batch_buffer_per_source = []
                 for idx in self.group_source2inds[group][source]:
-                    idx = self.group2inds_per_source[source][group][
-                        idx] + self.cumulative_sizes[source]
+                    idx = (
+                        self.group2inds_per_source[source][group][idx]
+                        + self.cumulative_sizes[source]
+                    )
                     batch_buffer_per_source.append(idx)
                     if len(batch_buffer_per_source) == num:
                         batch_buffer += batch_buffer_per_source

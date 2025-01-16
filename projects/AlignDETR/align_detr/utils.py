@@ -17,7 +17,7 @@ class KeysRecorder:
             keys = []
         self.keys = keys
 
-    def __getitem__(self, key: Any) -> 'KeysRecorder':
+    def __getitem__(self, key: Any) -> "KeysRecorder":
         """Wrap method `__getitem__`  to record its keys.
 
         Args:

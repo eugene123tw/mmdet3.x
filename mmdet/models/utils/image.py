@@ -7,8 +7,9 @@ import torch
 from torch import Tensor
 
 
-def imrenormalize(img: Union[Tensor, np.ndarray], img_norm_cfg: dict,
-                  new_img_norm_cfg: dict) -> Union[Tensor, np.ndarray]:
+def imrenormalize(
+    img: Union[Tensor, np.ndarray], img_norm_cfg: dict, new_img_norm_cfg: dict
+) -> Union[Tensor, np.ndarray]:
     """Re-normalize the image.
 
     Args:
@@ -32,20 +33,21 @@ def imrenormalize(img: Union[Tensor, np.ndarray], img_norm_cfg: dict,
         return _imrenormalize(img, img_norm_cfg, new_img_norm_cfg)
 
 
-def _imrenormalize(img: Union[Tensor, np.ndarray], img_norm_cfg: dict,
-                   new_img_norm_cfg: dict) -> Union[Tensor, np.ndarray]:
+def _imrenormalize(
+    img: Union[Tensor, np.ndarray], img_norm_cfg: dict, new_img_norm_cfg: dict
+) -> Union[Tensor, np.ndarray]:
     """Re-normalize the image."""
     img_norm_cfg = img_norm_cfg.copy()
     new_img_norm_cfg = new_img_norm_cfg.copy()
     for k, v in img_norm_cfg.items():
-        if (k == 'mean' or k == 'std') and not isinstance(v, np.ndarray):
+        if (k == "mean" or k == "std") and not isinstance(v, np.ndarray):
             img_norm_cfg[k] = np.array(v, dtype=img.dtype)
     # reverse cfg
-    if 'bgr_to_rgb' in img_norm_cfg:
-        img_norm_cfg['rgb_to_bgr'] = img_norm_cfg['bgr_to_rgb']
-        img_norm_cfg.pop('bgr_to_rgb')
+    if "bgr_to_rgb" in img_norm_cfg:
+        img_norm_cfg["rgb_to_bgr"] = img_norm_cfg["bgr_to_rgb"]
+        img_norm_cfg.pop("bgr_to_rgb")
     for k, v in new_img_norm_cfg.items():
-        if (k == 'mean' or k == 'std') and not isinstance(v, np.ndarray):
+        if (k == "mean" or k == "std") and not isinstance(v, np.ndarray):
             new_img_norm_cfg[k] = np.array(v, dtype=img.dtype)
     img = mmcv.imdenormalize(img, **img_norm_cfg)
     img = mmcv.imnormalize(img, **new_img_norm_cfg)

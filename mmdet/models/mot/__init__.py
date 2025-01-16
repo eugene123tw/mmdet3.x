@@ -6,6 +6,4 @@ from .ocsort import OCSORT
 from .qdtrack import QDTrack
 from .strongsort import StrongSORT
 
-__all__ = [
-    'BaseMOTModel', 'ByteTrack', 'QDTrack', 'DeepSORT', 'StrongSORT', 'OCSORT'
-]
+__all__ = ["BaseMOTModel", "ByteTrack", "QDTrack", "DeepSORT", "StrongSORT", "OCSORT"]

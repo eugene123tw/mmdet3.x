@@ -10,10 +10,9 @@ from .utils import weighted_loss
 
 
 @weighted_loss
-def knowledge_distillation_kl_div_loss(pred: Tensor,
-                                       soft_label: Tensor,
-                                       T: int,
-                                       detach_target: bool = True) -> Tensor:
+def knowledge_distillation_kl_div_loss(
+    pred: Tensor, soft_label: Tensor, T: int, detach_target: bool = True
+) -> Tensor:
     r"""Loss function for knowledge distilling using KL divergence.
 
     Args:
@@ -30,9 +29,9 @@ def knowledge_distillation_kl_div_loss(pred: Tensor,
     if detach_target:
         target = target.detach()
 
-    kd_loss = F.kl_div(
-        F.log_softmax(pred / T, dim=1), target, reduction='none').mean(1) * (
-            T * T)
+    kd_loss = F.kl_div(F.log_softmax(pred / T, dim=1), target, reduction="none").mean(
+        1
+    ) * (T * T)
 
     return kd_loss
 
@@ -47,22 +46,23 @@ class KnowledgeDistillationKLDivLoss(nn.Module):
         T (int): Temperature for distillation.
     """
 
-    def __init__(self,
-                 reduction: str = 'mean',
-                 loss_weight: float = 1.0,
-                 T: int = 10) -> None:
+    def __init__(
+        self, reduction: str = "mean", loss_weight: float = 1.0, T: int = 10
+    ) -> None:
         super().__init__()
         assert T >= 1
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.T = T
 
-    def forward(self,
-                pred: Tensor,
-                soft_label: Tensor,
-                weight: Optional[Tensor] = None,
-                avg_factor: Optional[int] = None,
-                reduction_override: Optional[str] = None) -> Tensor:
+    def forward(
+        self,
+        pred: Tensor,
+        soft_label: Tensor,
+        weight: Optional[Tensor] = None,
+        avg_factor: Optional[int] = None,
+        reduction_override: Optional[str] = None,
+    ) -> Tensor:
         """Forward function.
 
         Args:
@@ -79,10 +79,9 @@ class KnowledgeDistillationKLDivLoss(nn.Module):
         Returns:
             Tensor: Loss tensor.
         """
-        assert reduction_override in (None, 'none', 'mean', 'sum')
+        assert reduction_override in (None, "none", "mean", "sum")
 
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
+        reduction = reduction_override if reduction_override else self.reduction
 
         loss_kd = self.loss_weight * knowledge_distillation_kl_div_loss(
             pred,
@@ -90,6 +89,7 @@ class KnowledgeDistillationKLDivLoss(nn.Module):
             weight,
             reduction=reduction,
             avg_factor=avg_factor,
-            T=self.T)
+            T=self.T,
+        )
 
         return loss_kd

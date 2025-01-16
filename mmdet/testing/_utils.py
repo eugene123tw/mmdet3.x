@@ -22,10 +22,11 @@ def _get_config_directory():
     except NameError:
         # For IPython development when this __file__ is not defined
         import mmdet
+
         repo_dpath = dirname(dirname(mmdet.__file__))
-    config_dpath = join(repo_dpath, 'configs')
+    config_dpath = join(repo_dpath, "configs")
     if not exists(config_dpath):
-        raise Exception('Cannot find config path')
+        raise Exception("Cannot find config path")
     return config_dpath
 
 
@@ -78,26 +79,30 @@ def _rand_bboxes(rng, num_boxes, w, h):
 
 def _rand_masks(rng, num_boxes, bboxes, img_w, img_h):
     from mmdet.structures.mask import BitmapMasks
+
     masks = np.zeros((num_boxes, img_h, img_w))
     for i, bbox in enumerate(bboxes):
         bbox = bbox.astype(np.int32)
-        mask = (rng.rand(1, bbox[3] - bbox[1], bbox[2] - bbox[0]) >
-                0.3).astype(np.int64)
-        masks[i:i + 1, bbox[1]:bbox[3], bbox[0]:bbox[2]] = mask
+        mask = (rng.rand(1, bbox[3] - bbox[1], bbox[2] - bbox[0]) > 0.3).astype(
+            np.int64
+        )
+        masks[i : i + 1, bbox[1] : bbox[3], bbox[0] : bbox[2]] = mask
     return BitmapMasks(masks, height=img_h, width=img_w)
 
 
-def demo_mm_inputs(batch_size=2,
-                   image_shapes=(3, 128, 128),
-                   num_items=None,
-                   num_classes=10,
-                   sem_seg_output_strides=1,
-                   with_mask=False,
-                   with_semantic=False,
-                   use_box_type=False,
-                   device='cpu',
-                   texts=None,
-                   custom_entities=False):
+def demo_mm_inputs(
+    batch_size=2,
+    image_shapes=(3, 128, 128),
+    num_items=None,
+    num_classes=10,
+    sem_seg_output_strides=1,
+    with_mask=False,
+    with_semantic=False,
+    use_box_type=False,
+    device="cpu",
+    texts=None,
+    custom_entities=False,
+):
     """Create a superset of inputs needed to run test or train batches.
 
     Args:
@@ -135,22 +140,22 @@ def demo_mm_inputs(batch_size=2,
         image = rng.randint(0, 255, size=image_shape, dtype=np.uint8)
 
         mm_inputs = dict()
-        mm_inputs['inputs'] = torch.from_numpy(image).to(device)
+        mm_inputs["inputs"] = torch.from_numpy(image).to(device)
 
         img_meta = {
-            'img_id': idx,
-            'img_shape': image_shape[1:],
-            'ori_shape': image_shape[1:],
-            'filename': '<demo>.png',
-            'scale_factor': np.array([1.1, 1.2]),
-            'flip': False,
-            'flip_direction': None,
-            'border': [1, 1, 1, 1]  # Only used by CenterNet
+            "img_id": idx,
+            "img_shape": image_shape[1:],
+            "ori_shape": image_shape[1:],
+            "filename": "<demo>.png",
+            "scale_factor": np.array([1.1, 1.2]),
+            "flip": False,
+            "flip_direction": None,
+            "border": [1, 1, 1, 1],  # Only used by CenterNet
         }
 
         if texts:
-            img_meta['text'] = texts[idx]
-            img_meta['custom_entities'] = custom_entities
+            img_meta["text"] = texts[idx]
+            img_meta["custom_entities"] = custom_entities
 
         data_sample = DetDataSample()
         data_sample.set_metainfo(img_meta)
@@ -185,8 +190,7 @@ def demo_mm_inputs(batch_size=2,
         ignore_instances = InstanceData()
         bboxes = _rand_bboxes(rng, num_boxes, w, h)
         if use_box_type:
-            ignore_instances.bboxes = HorizontalBoxes(
-                bboxes, dtype=torch.float32)
+            ignore_instances.bboxes = HorizontalBoxes(bboxes, dtype=torch.float32)
         else:
             ignore_instances.bboxes = torch.FloatTensor(bboxes)
         data_sample.ignored_instances = ignore_instances
@@ -197,13 +201,15 @@ def demo_mm_inputs(batch_size=2,
             gt_semantic_seg = torch.from_numpy(
                 np.random.randint(
                     0,
-                    num_classes, (1, h // sem_seg_output_strides,
-                                  w // sem_seg_output_strides),
-                    dtype=np.uint8))
+                    num_classes,
+                    (1, h // sem_seg_output_strides, w // sem_seg_output_strides),
+                    dtype=np.uint8,
+                )
+            )
             gt_sem_seg_data = dict(sem_seg=gt_semantic_seg)
             data_sample.gt_sem_seg = PixelData(**gt_sem_seg_data)
 
-        mm_inputs['data_samples'] = data_sample.to(device)
+        mm_inputs["data_samples"] = data_sample.to(device)
 
         # TODO: gt_ignore
 
@@ -212,7 +218,7 @@ def demo_mm_inputs(batch_size=2,
     return data
 
 
-def demo_mm_proposals(image_shapes, num_proposals, device='cpu'):
+def demo_mm_proposals(image_shapes, num_proposals, device="cpu"):
     """Create a list of fake porposals.
 
     Args:
@@ -233,12 +239,14 @@ def demo_mm_proposals(image_shapes, num_proposals, device='cpu'):
     return results
 
 
-def demo_mm_sampling_results(proposals_list,
-                             batch_gt_instances,
-                             batch_gt_instances_ignore=None,
-                             assigner_cfg=None,
-                             sampler_cfg=None,
-                             feats=None):
+def demo_mm_sampling_results(
+    proposals_list,
+    batch_gt_instances,
+    batch_gt_instances_ignore=None,
+    assigner_cfg=None,
+    sampler_cfg=None,
+    feats=None,
+):
     """Create sample results that can be passed to BBoxHead.get_targets."""
     assert len(proposals_list) == len(batch_gt_instances)
     if batch_gt_instances_ignore is None:
@@ -247,21 +255,21 @@ def demo_mm_sampling_results(proposals_list,
         assert len(batch_gt_instances_ignore) == len(batch_gt_instances)
 
     default_assigner_cfg = dict(
-        type='MaxIoUAssigner',
+        type="MaxIoUAssigner",
         pos_iou_thr=0.5,
         neg_iou_thr=0.5,
         min_pos_iou=0.5,
-        ignore_iof_thr=-1)
-    assigner_cfg = assigner_cfg if assigner_cfg is not None \
-        else default_assigner_cfg
+        ignore_iof_thr=-1,
+    )
+    assigner_cfg = assigner_cfg if assigner_cfg is not None else default_assigner_cfg
     default_sampler_cfg = dict(
-        type='RandomSampler',
+        type="RandomSampler",
         num=512,
         pos_fraction=0.25,
         neg_pos_ub=-1,
-        add_gt_as_proposals=True)
-    sampler_cfg = sampler_cfg if sampler_cfg is not None \
-        else default_sampler_cfg
+        add_gt_as_proposals=True,
+    )
+    sampler_cfg = sampler_cfg if sampler_cfg is not None else default_sampler_cfg
     bbox_assigner = TASK_UTILS.build(assigner_cfg)
     bbox_sampler = TASK_UTILS.build(sampler_cfg)
 
@@ -271,25 +279,29 @@ def demo_mm_sampling_results(proposals_list,
             feats = [lvl_feat[i][None] for lvl_feat in feats]
         # rename proposals.bboxes to proposals.priors
         proposals = proposals_list[i]
-        proposals.priors = proposals.pop('bboxes')
+        proposals.priors = proposals.pop("bboxes")
 
-        assign_result = bbox_assigner.assign(proposals, batch_gt_instances[i],
-                                             batch_gt_instances_ignore[i])
+        assign_result = bbox_assigner.assign(
+            proposals, batch_gt_instances[i], batch_gt_instances_ignore[i]
+        )
         sampling_result = bbox_sampler.sample(
-            assign_result, proposals, batch_gt_instances[i], feats=feats)
+            assign_result, proposals, batch_gt_instances[i], feats=feats
+        )
         sampling_results.append(sampling_result)
 
     return sampling_results
 
 
-def demo_track_inputs(batch_size=1,
-                      num_frames=2,
-                      key_frames_inds=None,
-                      image_shapes=(3, 128, 128),
-                      num_items=None,
-                      num_classes=1,
-                      with_mask=False,
-                      with_semantic=False):
+def demo_track_inputs(
+    batch_size=1,
+    num_frames=2,
+    key_frames_inds=None,
+    image_shapes=(3, 128, 128),
+    num_items=None,
+    num_classes=1,
+    with_mask=False,
+    with_semantic=False,
+):
     """Create a superset of inputs needed to run test or train batches.
 
     Args:
@@ -321,24 +333,25 @@ def demo_track_inputs(batch_size=1,
         _, h, w = image_shapes[idx]
 
         imgs = rng.randint(
-            0, 255, size=(num_frames, *image_shapes[idx]), dtype=np.uint8)
-        mm_inputs['inputs'] = torch.from_numpy(imgs)
+            0, 255, size=(num_frames, *image_shapes[idx]), dtype=np.uint8
+        )
+        mm_inputs["inputs"] = torch.from_numpy(imgs)
 
         img_meta = {
-            'img_id': idx,
-            'img_shape': image_shapes[idx][-2:],
-            'ori_shape': image_shapes[idx][-2:],
-            'filename': '<demo>.png',
-            'scale_factor': np.array([1.1, 1.2]),
-            'flip': False,
-            'flip_direction': None,
-            'is_video_data': True,
+            "img_id": idx,
+            "img_shape": image_shapes[idx][-2:],
+            "ori_shape": image_shapes[idx][-2:],
+            "filename": "<demo>.png",
+            "scale_factor": np.array([1.1, 1.2]),
+            "flip": False,
+            "flip_direction": None,
+            "is_video_data": True,
         }
 
         video_data_samples = []
         for i in range(num_frames):
             data_sample = DetDataSample()
-            img_meta['frame_id'] = i
+            img_meta["frame_id"] = i
             data_sample.set_metainfo(img_meta)
 
             # gt_instances
@@ -371,18 +384,15 @@ def demo_track_inputs(batch_size=1,
         track_data_sample = TrackDataSample()
         track_data_sample.video_data_samples = video_data_samples
         if key_frames_inds is not None:
-            assert isinstance(
-                key_frames_inds,
-                list) and len(key_frames_inds) < num_frames and max(
-                    key_frames_inds) < num_frames
-            ref_frames_inds = [
-                i for i in range(num_frames) if i not in key_frames_inds
-            ]
-            track_data_sample.set_metainfo(
-                dict(key_frames_inds=key_frames_inds))
-            track_data_sample.set_metainfo(
-                dict(ref_frames_inds=ref_frames_inds))
-        mm_inputs['data_samples'] = track_data_sample
+            assert (
+                isinstance(key_frames_inds, list)
+                and len(key_frames_inds) < num_frames
+                and max(key_frames_inds) < num_frames
+            )
+            ref_frames_inds = [i for i in range(num_frames) if i not in key_frames_inds]
+            track_data_sample.set_metainfo(dict(key_frames_inds=key_frames_inds))
+            track_data_sample.set_metainfo(dict(ref_frames_inds=ref_frames_inds))
+        mm_inputs["data_samples"] = track_data_sample
 
         # TODO: gt_ignore
         packed_inputs.append(mm_inputs)
@@ -427,28 +437,32 @@ def random_boxes(num=1, scale=1, rng=None):
 # TODO: Support full ceph
 def replace_to_ceph(cfg):
     backend_args = dict(
-        backend='petrel',
-        path_mapping=dict({
-            './data/': 's3://openmmlab/datasets/detection/',
-            'data/': 's3://openmmlab/datasets/detection/'
-        }))
+        backend="petrel",
+        path_mapping=dict(
+            {
+                "./data/": "s3://openmmlab/datasets/detection/",
+                "data/": "s3://openmmlab/datasets/detection/",
+            }
+        ),
+    )
 
     # TODO: name is a reserved interface, which will be used later.
     def _process_pipeline(dataset, name):
-
         def replace_img(pipeline):
-            if pipeline['type'] == 'LoadImageFromFile':
-                pipeline['backend_args'] = backend_args
+            if pipeline["type"] == "LoadImageFromFile":
+                pipeline["backend_args"] = backend_args
 
         def replace_ann(pipeline):
-            if pipeline['type'] == 'LoadAnnotations' or pipeline[
-                    'type'] == 'LoadPanopticAnnotations':
-                pipeline['backend_args'] = backend_args
+            if (
+                pipeline["type"] == "LoadAnnotations"
+                or pipeline["type"] == "LoadPanopticAnnotations"
+            ):
+                pipeline["backend_args"] = backend_args
 
-        if 'pipeline' in dataset:
+        if "pipeline" in dataset:
             replace_img(dataset.pipeline[0])
             replace_ann(dataset.pipeline[1])
-            if 'dataset' in dataset:
+            if "dataset" in dataset:
                 # dataset wrapper
                 replace_img(dataset.dataset.pipeline[0])
                 replace_ann(dataset.dataset.pipeline[1])
@@ -458,8 +472,8 @@ def replace_to_ceph(cfg):
             replace_ann(dataset.dataset.pipeline[1])
 
     def _process_evaluator(evaluator, name):
-        if evaluator['type'] == 'CocoPanopticMetric':
-            evaluator['backend_args'] = backend_args
+        if evaluator["type"] == "CocoPanopticMetric":
+            evaluator["backend_args"] = backend_args
 
     # half ceph
     _process_pipeline(cfg.train_dataloader.dataset, cfg.filename)

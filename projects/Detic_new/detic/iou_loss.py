@@ -4,12 +4,11 @@ from torch import nn
 
 # support calculate  IOULoss with box_pred
 class IOULoss(nn.Module):
-
-    def __init__(self, loc_loss_type='iou'):
+    def __init__(self, loc_loss_type="iou"):
         super(IOULoss, self).__init__()
         self.loc_loss_type = loc_loss_type
 
-    def forward(self, pred, target, weight=None, reduction='sum'):
+    def forward(self, pred, target, weight=None, reduction="sum"):
         pred_left = pred[:, 0]
         pred_top = pred[:, 1]
         pred_right = pred[:, 2]
@@ -20,19 +19,22 @@ class IOULoss(nn.Module):
         target_right = target[:, 2]
         target_bottom = target[:, 3]
 
-        target_aera = (target_left + target_right) * (
-            target_top + target_bottom)
+        target_aera = (target_left + target_right) * (target_top + target_bottom)
         pred_aera = (pred_left + pred_right) * (pred_top + pred_bottom)
 
         w_intersect = torch.min(pred_left, target_left) + torch.min(
-            pred_right, target_right)
+            pred_right, target_right
+        )
         h_intersect = torch.min(pred_bottom, target_bottom) + torch.min(
-            pred_top, target_top)
+            pred_top, target_top
+        )
 
         g_w_intersect = torch.max(pred_left, target_left) + torch.max(
-            pred_right, target_right)
+            pred_right, target_right
+        )
         g_h_intersect = torch.max(pred_bottom, target_bottom) + torch.max(
-            pred_top, target_top)
+            pred_top, target_top
+        )
         ac_uion = g_w_intersect * g_h_intersect
 
         area_intersect = w_intersect * h_intersect
@@ -40,11 +42,11 @@ class IOULoss(nn.Module):
 
         ious = (area_intersect + 1.0) / (area_union + 1.0)
         gious = ious - (ac_uion - area_union) / ac_uion
-        if self.loc_loss_type == 'iou':
+        if self.loc_loss_type == "iou":
             losses = -torch.log(ious)
-        elif self.loc_loss_type == 'linear_iou':
+        elif self.loc_loss_type == "linear_iou":
             losses = 1 - ious
-        elif self.loc_loss_type == 'giou':
+        elif self.loc_loss_type == "giou":
             losses = 1 - gious
         else:
             raise NotImplementedError
@@ -54,11 +56,11 @@ class IOULoss(nn.Module):
         else:
             losses = losses
 
-        if reduction == 'sum':
+        if reduction == "sum":
             return losses.sum()
-        elif reduction == 'batch':
+        elif reduction == "batch":
             return losses.sum(dim=[1])
-        elif reduction == 'none':
+        elif reduction == "none":
             return losses
         else:
             raise NotImplementedError
@@ -67,7 +69,7 @@ class IOULoss(nn.Module):
 def giou_loss(
     boxes1: torch.Tensor,
     boxes2: torch.Tensor,
-    reduction: str = 'none',
+    reduction: str = "none",
     eps: float = 1e-7,
 ) -> torch.Tensor:
     """Generalized Intersection over Union Loss (Hamid Rezatofighi et.
@@ -91,8 +93,8 @@ def giou_loss(
     x1, y1, x2, y2 = boxes1.unbind(dim=-1)
     x1g, y1g, x2g, y2g = boxes2.unbind(dim=-1)
 
-    assert (x2 >= x1).all(), 'bad box: x1 larger than x2'
-    assert (y2 >= y1).all(), 'bad box: y1 larger than y2'
+    assert (x2 >= x1).all(), "bad box: x1 larger than x2"
+    assert (y2 >= y1).all(), "bad box: y1 larger than y2"
 
     # Intersection keypoints
     xkis1 = torch.max(x1, x1g)
@@ -117,9 +119,9 @@ def giou_loss(
 
     loss = 1 - miouk
 
-    if reduction == 'mean':
+    if reduction == "mean":
         loss = loss.mean()
-    elif reduction == 'sum':
+    elif reduction == "sum":
         loss = loss.sum()
 
     return loss

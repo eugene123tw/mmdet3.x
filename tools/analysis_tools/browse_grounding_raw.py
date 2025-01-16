@@ -24,25 +24,24 @@ backend_args = None
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Browse a dataset')
-    parser.add_argument('data_root')
-    parser.add_argument('ann_file')
-    parser.add_argument('img_prefix')
-    parser.add_argument('--label-map-file', '-m', default=None)
+    parser = argparse.ArgumentParser(description="Browse a dataset")
+    parser.add_argument("data_root")
+    parser.add_argument("ann_file")
+    parser.add_argument("img_prefix")
+    parser.add_argument("--label-map-file", "-m", default=None)
     parser.add_argument(
-        '--output-dir',
-        '-o',
+        "--output-dir",
+        "-o",
         default=None,
         type=str,
-        help='If there is no display interface, you can save it')
-    parser.add_argument('--not-show', default=False, action='store_true')
-    parser.add_argument('--show-num', '-n', type=int, default=30)
-    parser.add_argument('--shuffle', default=False, action='store_true')
+        help="If there is no display interface, you can save it",
+    )
+    parser.add_argument("--not-show", default=False, action="store_true")
+    parser.add_argument("--show-num", "-n", type=int, default=30)
+    parser.add_argument("--shuffle", default=False, action="store_true")
     parser.add_argument(
-        '--show-interval',
-        type=float,
-        default=0,
-        help='the interval of show (s)')
+        "--show-interval", type=float, default=0, help="the interval of show (s)"
+    )
     args = parser.parse_args()
     return args
 
@@ -56,14 +55,16 @@ def draw_all_character(visualizer, characters, w):
                 str(char),
                 positions=np.array([start_index, y_index]),
                 colors=(0, 0, 0),
-                font_families='monospace')
+                font_families="monospace",
+            )
             start_index += len(char) * 8
         else:
             visualizer.draw_texts(
                 str(char[0]),
                 positions=np.array([start_index, y_index]),
                 colors=char[1],
-                font_families='monospace')
+                font_families="monospace",
+            )
             start_index += len(char[0]) * 8
 
         if start_index > w - 10:
@@ -79,57 +80,61 @@ def main():
     assert args.show_num > 0
 
     local_path = osp.join(args.data_root, args.ann_file)
-    with open(local_path, 'r') as f:
+    with open(local_path, "r") as f:
         data_list = [json.loads(line) for line in f]
 
     dataset_index = list(range(len(data_list)))
     if args.shuffle:
         import random
+
         random.shuffle(dataset_index)
 
     if args.label_map_file is not None:
         label_map_file = osp.join(args.data_root, args.label_map_file)
-        with open(label_map_file, 'r') as file:
+        with open(label_map_file, "r") as file:
             label_map = json.load(file)
 
     visualizer = DetLocalVisualizer()
 
-    for i in dataset_index[:args.show_num]:
+    for i in dataset_index[: args.show_num]:
         item = data_list[i]
 
-        img_path = osp.join(args.data_root, args.img_prefix, item['filename'])
+        img_path = osp.join(args.data_root, args.img_prefix, item["filename"])
         if backend_args is not None:
             img_bytes = get(img_path, backend_args)
-            img = imfrombytes(img_bytes, flag='color')
+            img = imfrombytes(img_bytes, flag="color")
         else:
             img = cv2.imread(img_path)
         img = img[..., [2, 1, 0]]  # bgr to rgb
 
-        base_name, extension = osp.splitext(item['filename'])
+        base_name, extension = osp.splitext(item["filename"])
 
-        out_file = osp.join(args.output_dir, base_name + '_' + str(i) +
-                            extension) if args.output_dir is not None else None
+        out_file = (
+            osp.join(args.output_dir, base_name + "_" + str(i) + extension)
+            if args.output_dir is not None
+            else None
+        )
 
         if args.output_dir is not None:
             mkdir_or_exist(args.output_dir)
 
-        if 'detection' in item:
-            anno = item['detection']
+        if "detection" in item:
+            anno = item["detection"]
 
-            instances = [obj for obj in anno['instances']]
-            bboxes = [obj['bbox'] for obj in instances]
-            bbox_labels = [int(obj['label']) for obj in instances]
+            instances = [obj for obj in anno["instances"]]
+            bboxes = [obj["bbox"] for obj in instances]
+            bbox_labels = [int(obj["label"]) for obj in instances]
             label_names = [label_map[str(label)] for label in bbox_labels]
 
             data_sample = DetDataSample()
             gt_instances = InstanceData()
-            if len(instances) > 0 and 'score' in instances[0]:
-                score = [obj['score'] for obj in instances]
-                gt_instances['scores'] = np.array(score)
+            if len(instances) > 0 and "score" in instances[0]:
+                score = [obj["score"] for obj in instances]
+                gt_instances["scores"] = np.array(score)
 
-            gt_instances['bboxes'] = np.array(bboxes).reshape(-1, 4)
-            gt_instances['labels'] = np.array(bbox_labels)
-            gt_instances['label_names'] = label_names
+            gt_instances["bboxes"] = np.array(bboxes).reshape(-1, 4)
+            gt_instances["labels"] = np.array(bbox_labels)
+            gt_instances["label_names"] = label_names
             data_sample.gt_instances = gt_instances
 
             visualizer.add_datasample(
@@ -139,11 +144,12 @@ def main():
                 draw_pred=False,
                 show=not args.not_show,
                 wait_time=args.show_interval,
-                out_file=out_file)
-        elif 'grounding' in item:
-            anno = item['grounding']
-            text = anno['caption']
-            regions = anno['regions']
+                out_file=out_file,
+            )
+        elif "grounding" in item:
+            anno = item["grounding"]
+            text = anno["caption"]
+            regions = anno["regions"]
 
             max_label = len(regions) if len(regions) > 0 else 0
             palette = np.random.randint(0, 256, size=(max_label + 1, 3))
@@ -155,37 +161,36 @@ def main():
 
             gt_tokens_positive = []
             for i, region in enumerate(regions):
-                bbox = region['bbox']
+                bbox = region["bbox"]
                 bbox = np.array(bbox).reshape(-1, 4)
-                tokens_positive = region['tokens_positive']
+                tokens_positive = region["tokens_positive"]
                 gt_tokens_positive.append(tokens_positive)
                 visualizer.draw_bboxes(
-                    bbox,
-                    edge_colors=colors[i],
-                    face_colors=colors[i],
-                    alpha=0.3)
+                    bbox, edge_colors=colors[i], face_colors=colors[i], alpha=0.3
+                )
                 visualizer.draw_bboxes(bbox, edge_colors=colors[i], alpha=1)
 
-                if 'score' in region:
-                    areas = (bbox[:, 3] - bbox[:, 1]) * (
-                        bbox[:, 2] - bbox[:, 0])
+                if "score" in region:
+                    areas = (bbox[:, 3] - bbox[:, 1]) * (bbox[:, 2] - bbox[:, 0])
                     scales = _get_adaptive_scales(areas)
-                    score = region['score'][0]
+                    score = region["score"][0]
                     score = [str(s) for s in score]
-                    font_sizes = [
-                        int(13 * scales[i]) for i in range(len(scales))
-                    ]
+                    font_sizes = [int(13 * scales[i]) for i in range(len(scales))]
                     visualizer.draw_texts(
                         score,
                         bbox[:, :2].astype(np.int32),
                         colors=(255, 255, 255),
                         font_sizes=font_sizes,
-                        bboxes=[{
-                            'facecolor': 'black',
-                            'alpha': 0.8,
-                            'pad': 0.7,
-                            'edgecolor': 'none'
-                        }] * len(bbox))
+                        bboxes=[
+                            {
+                                "facecolor": "black",
+                                "alpha": 0.8,
+                                "pad": 0.7,
+                                "edgecolor": "none",
+                            }
+                        ]
+                        * len(bbox),
+                    )
 
             drawn_img = visualizer.get_image()
             new_image = np.ones((100, img.shape[1], 3), dtype=np.uint8) * 255
@@ -210,21 +215,19 @@ def main():
                     characters.append([w, (0, 0, 0)])
                 start_index = end_index
 
-            drawn_text = draw_all_character(visualizer, characters,
-                                            img.shape[1])
+            drawn_text = draw_all_character(visualizer, characters, img.shape[1])
             drawn_img = np.concatenate((drawn_img, drawn_text), axis=0)
 
             if not args.not_show:
                 visualizer.show(
-                    drawn_img,
-                    win_name=base_name,
-                    wait_time=args.show_interval)
+                    drawn_img, win_name=base_name, wait_time=args.show_interval
+                )
 
             if out_file is not None:
                 imwrite(drawn_img[..., ::-1], out_file)
 
-        elif 'referring' in item:
-            referring = item['referring']
+        elif "referring" in item:
+            referring = item["referring"]
 
             max_label = len(referring) if len(referring) > 0 else 0
             palette = np.random.randint(0, 256, size=(max_label + 1, 3))
@@ -235,16 +238,14 @@ def main():
             visualizer.set_image(img)
             phrases = []
             for i, ref in enumerate(referring):
-                bbox = ref['bbox']
-                phrase = ref['phrase']
-                phrases.append(' // '.join(phrase))
+                bbox = ref["bbox"]
+                phrase = ref["phrase"]
+                phrases.append(" // ".join(phrase))
                 bbox = np.array(bbox).reshape(-1, 4)
 
                 visualizer.draw_bboxes(
-                    bbox,
-                    edge_colors=colors[i],
-                    face_colors=colors[i],
-                    alpha=0.3)
+                    bbox, edge_colors=colors[i], face_colors=colors[i], alpha=0.3
+                )
                 visualizer.draw_bboxes(bbox, edge_colors=colors[i], alpha=1)
             drawn_img = visualizer.get_image()
 
@@ -256,15 +257,14 @@ def main():
 
             chunk_size = max(min(img.shape[1] - 400, 70), 50)
             for i, p in enumerate(phrases):
-                chunk_p = [
-                    p[i:i + chunk_size] for i in range(0, len(p), chunk_size)
-                ]
+                chunk_p = [p[i : i + chunk_size] for i in range(0, len(p), chunk_size)]
                 for cp in chunk_p:
                     visualizer.draw_texts(
                         cp,
                         positions=np.array([start_index, y_index]),
                         colors=colors[i],
-                        font_families='monospace')
+                        font_families="monospace",
+                    )
                     y_index += 15
 
             drawn_text = visualizer.get_image()
@@ -272,13 +272,12 @@ def main():
 
             if not args.not_show:
                 visualizer.show(
-                    drawn_img,
-                    win_name=base_name,
-                    wait_time=args.show_interval)
+                    drawn_img, win_name=base_name, wait_time=args.show_interval
+                )
 
             if out_file is not None:
                 imwrite(drawn_img[..., ::-1], out_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

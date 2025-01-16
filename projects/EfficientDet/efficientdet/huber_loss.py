@@ -28,8 +28,7 @@ def huber_loss(pred: Tensor, target: Tensor, beta: float = 1.0) -> Tensor:
 
     assert pred.size() == target.size()
     diff = torch.abs(pred - target)
-    loss = torch.where(diff < beta, 0.5 * diff * diff,
-                       beta * diff - 0.5 * beta * beta)
+    loss = torch.where(diff < beta, 0.5 * diff * diff, beta * diff - 0.5 * beta * beta)
     return loss
 
 
@@ -45,22 +44,23 @@ class HuberLoss(nn.Module):
         loss_weight (float, optional): The weight of loss.
     """
 
-    def __init__(self,
-                 beta: float = 1.0,
-                 reduction: str = 'mean',
-                 loss_weight: float = 1.0) -> None:
+    def __init__(
+        self, beta: float = 1.0, reduction: str = "mean", loss_weight: float = 1.0
+    ) -> None:
         super().__init__()
         self.beta = beta
         self.reduction = reduction
         self.loss_weight = loss_weight
 
-    def forward(self,
-                pred: Tensor,
-                target: Tensor,
-                weight: Optional[Tensor] = None,
-                avg_factor: Optional[int] = None,
-                reduction_override: Optional[str] = None,
-                **kwargs) -> Tensor:
+    def forward(
+        self,
+        pred: Tensor,
+        target: Tensor,
+        weight: Optional[Tensor] = None,
+        avg_factor: Optional[int] = None,
+        reduction_override: Optional[str] = None,
+        **kwargs,
+    ) -> Tensor:
         """Forward function.
 
         Args:
@@ -77,9 +77,8 @@ class HuberLoss(nn.Module):
         Returns:
             Tensor: Calculated loss
         """
-        assert reduction_override in (None, 'none', 'mean', 'sum')
-        reduction = (
-            reduction_override if reduction_override else self.reduction)
+        assert reduction_override in (None, "none", "mean", "sum")
+        reduction = reduction_override if reduction_override else self.reduction
         loss_bbox = self.loss_weight * huber_loss(
             pred,
             target,
@@ -87,5 +86,6 @@ class HuberLoss(nn.Module):
             beta=self.beta,
             reduction=reduction,
             avg_factor=avg_factor,
-            **kwargs)
+            **kwargs,
+        )
         return loss_bbox

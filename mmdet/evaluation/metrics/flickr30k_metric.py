@@ -21,25 +21,23 @@ class RecallTracker:
         """
 
         self.total_byk_bycat: Dict[int, Dict[str, int]] = {
-            k: defaultdict(int)
-            for k in topk
+            k: defaultdict(int) for k in topk
         }
         self.positives_byk_bycat: Dict[int, Dict[str, int]] = {
-            k: defaultdict(int)
-            for k in topk
+            k: defaultdict(int) for k in topk
         }
 
     def add_positive(self, k: int, category: str):
         """Log a positive hit @k for given category."""
         if k not in self.total_byk_bycat:
-            raise RuntimeError(f'{k} is not a valid recall threshold')
+            raise RuntimeError(f"{k} is not a valid recall threshold")
         self.total_byk_bycat[k][category] += 1
         self.positives_byk_bycat[k][category] += 1
 
     def add_negative(self, k: int, category: str):
         """Log a negative hit @k for given category."""
         if k not in self.total_byk_bycat:
-            raise RuntimeError(f'{k} is not a valid recall threshold')
+            raise RuntimeError(f"{k} is not a valid recall threshold")
         self.total_byk_bycat[k][category] += 1
 
     def report(self) -> Dict[str, Dict[str, float]]:
@@ -51,8 +49,7 @@ class RecallTracker:
         for k in self.total_byk_bycat:
             assert k in self.positives_byk_bycat
             report[str(k)] = {
-                cat:
-                self.positives_byk_bycat[k][cat] / self.total_byk_bycat[k][cat]
+                cat: self.positives_byk_bycat[k][cat] / self.total_byk_bycat[k][cat]
                 for cat in self.total_byk_bycat[k]
             }
         return report
@@ -67,7 +64,7 @@ class Flickr30kMetric(BaseMetric):
         topk: Sequence[int] = (1, 5, 10, -1),
         iou_thrs: float = 0.5,
         merge_boxes: bool = False,
-        collect_device: str = 'cpu',
+        collect_device: str = "cpu",
         prefix: Optional[str] = None,
     ) -> None:
         super().__init__(collect_device=collect_device, prefix=prefix)
@@ -85,10 +82,14 @@ class Flickr30kMetric(BaseMetric):
 
         np_boxes = np.asarray(boxes)
 
-        return [[
-            np.boxes[:, 0].min(), np_boxes[:, 1].min(), np_boxes[:, 2].max(),
-            np_boxes[:, 3].max()
-        ]]
+        return [
+            [
+                np.boxes[:, 0].min(),
+                np_boxes[:, 1].min(),
+                np_boxes[:, 2].max(),
+                np_boxes[:, 3].max(),
+            ]
+        ]
 
     def process(self, data_batch: dict, data_samples: Sequence[dict]) -> None:
         """Process one batch of data samples and predictions.
@@ -102,10 +103,10 @@ class Flickr30kMetric(BaseMetric):
                 contain annotations and predictions.
         """
         for data_sample in data_samples:
-            pred = data_sample['pred_instances']
-            gt = data_sample['gt_instances']['bboxes']
-            gt_label = data_sample['phrase_ids']
-            phrases = data_sample['phrases']
+            pred = data_sample["pred_instances"]
+            gt = data_sample["gt_instances"]["bboxes"]
+            gt_label = data_sample["phrase_ids"]
+            phrases = data_sample["phrases"]
             assert len(gt) == len(gt_label)
 
             self.results.append((pred, gt, gt_label, phrases))
@@ -125,25 +126,23 @@ class Flickr30kMetric(BaseMetric):
 
         recall_tracker = RecallTracker(self.topk)
 
-        for pred, gt_boxes, gt_labels, phrases in zip(pred_list, gt_list,
-                                                      gt_label_list,
-                                                      phrase_list):
-            pred_boxes = pred['bboxes'].cpu().numpy()
-            pred_labels = pred['labels'].cpu().numpy()
+        for pred, gt_boxes, gt_labels, phrases in zip(
+            pred_list, gt_list, gt_label_list, phrase_list
+        ):
+            pred_boxes = pred["bboxes"].cpu().numpy()
+            pred_labels = pred["labels"].cpu().numpy()
             for i, phrase in enumerate(phrases):
                 cur_index = pred_labels == i
                 cur_boxes = pred_boxes[cur_index]
                 tar_index = [
-                    index for index, value in enumerate(gt_labels)
-                    if value == i
+                    index for index, value in enumerate(gt_labels) if value == i
                 ]
                 tar_boxes = gt_boxes[tar_index]
                 if self.merge:
                     tar_boxes = self.merge_boxes(tar_boxes)
                 if len(cur_boxes) == 0:
-                    cur_boxes = [[0., 0., 0., 0.]]
-                ious = bbox_overlaps(
-                    np.asarray(cur_boxes), np.asarray(tar_boxes))
+                    cur_boxes = [[0.0, 0.0, 0.0, 0.0]]
+                ious = bbox_overlaps(np.asarray(cur_boxes), np.asarray(tar_boxes))
                 for k in self.topk:
                     if k == -1:
                         maxi = ious.max()
@@ -151,12 +150,12 @@ class Flickr30kMetric(BaseMetric):
                         assert k > 0
                         maxi = ious[:k].max()
                     if maxi >= self.iou_thrs:
-                        recall_tracker.add_positive(k, 'all')
+                        recall_tracker.add_positive(k, "all")
                         # TODO: do not support class-wise evaluation yet
                         # for phrase_type in phrase['phrase_type']:
                         #     recall_tracker.add_positive(k, phrase_type)
                     else:
-                        recall_tracker.add_negative(k, 'all')
+                        recall_tracker.add_negative(k, "all")
                         # for phrase_type in phrase['phrase_type']:
                         #     recall_tracker.add_negative(k, phrase_type)
 
