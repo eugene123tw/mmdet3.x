@@ -11,7 +11,7 @@ custom_hooks = [
         update_buffers=True,
     ),
     dict(
-        switch_epoch=10,
+        switch_epoch=80,
         switch_pipeline=[
             dict(backend_args=None, type="LoadImageFromFile"),
             dict(
@@ -103,7 +103,7 @@ interval = 10
 load_from = "https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_tiny_8xb32-300e_coco/rtmdet-ins_tiny_8xb32-300e_coco_20221130_151727-ec670f7e.pth"
 log_level = "INFO"
 log_processor = dict(by_epoch=True, type="LogProcessor", window_size=50)
-max_epochs = 30
+max_epochs = 100
 model = dict(
     backbone=dict(
         act_cfg=dict(inplace=True, type="SiLU"),
@@ -198,11 +198,11 @@ optim_wrapper = dict(
 param_scheduler = [
     dict(begin=0, by_epoch=False, end=1000, start_factor=1e-05, type="LinearLR"),
     dict(
-        T_max=15,
-        begin=15,
+        T_max=50,
+        begin=50,
         by_epoch=True,
         convert_to_iter_based=True,
-        end=30,
+        end=100,
         eta_min=0.0002,
         type="CosineAnnealingLR",
     ),
@@ -321,11 +321,11 @@ test_pipeline = [
 train_cfg = dict(
     dynamic_intervals=[
         (
-            10,
+            80,
             1,
         ),
     ],
-    max_epochs=30,
+    max_epochs=100,
     type="EpochBasedTrainLoop",
     val_interval=1,
 )
