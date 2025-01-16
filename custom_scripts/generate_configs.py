@@ -167,10 +167,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # config = "rtmdet/rtmdet-ins_s_8xb32-300e_coco.py"
-    # folder_name = "rtmdet-ins_s"
-    # load_from = "https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_s_8xb32-300e_coco/rtmdet-ins_s_8xb32-300e_coco_20221121_212604-fdc5d7ec.pth"
-
     aeromonas = "Vitens-Aeromonas-coco"
     coliform = "Vitens-Coliform-coco"
     chicken = "Chicken-Real-Time-coco-roboflow"

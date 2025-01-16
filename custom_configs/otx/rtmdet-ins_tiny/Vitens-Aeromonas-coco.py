@@ -65,6 +65,9 @@ custom_hooks = [
         ],
         type="PipelineSwitchHook",
     ),
+    dict(
+        min_delta=0.01, monitor="coco/segm_mAP", patience=10, type="EarlyStoppingHook"
+    ),
 ]
 data_root = "/home/yuchunli/_DATASET/coco/"
 dataset_type = "CocoDataset"
