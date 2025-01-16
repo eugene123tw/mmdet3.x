@@ -1,7 +1,8 @@
 import argparse
 import datetime
-from pathlib import Path
 import json
+from pathlib import Path
+
 import numpy as np
 
 DATASETS = [
@@ -16,13 +17,13 @@ DATASETS = [
     "fashion-categories-coco-roboflow",
     "skindetect-roboflow",
     "pool-danger-coco-roboflow",
-    "blueberries-roboflow"
+    "blueberries-roboflow",
 ]
 
 
 def read_e2e_time(log):
     time_info = []
-    with open(log, 'r') as f:
+    with open(log, "r") as f:
         lines = f.readlines()
         for line in lines:
             if "mmengine - INFO" in line:
@@ -39,7 +40,7 @@ def read_e2e_time(log):
 
 def read_train_json(json_path):
     iter_lines = []
-    with open(json_path, 'r') as f:
+    with open(json_path, "r") as f:
         lines = f.readlines()
         for line in lines:
             iter_lines.append(json.loads(line))
@@ -49,14 +50,14 @@ def read_train_json(json_path):
     data_times = []
     epochs = []
     for line in iter_lines:
-        if 'time' in line:
-            iter_times.append(line['time'])
-        if 'data_time' in line:
-            data_times.append(line['data_time'])
-        if 'memory' in line:
-            total_memory.append(line['memory'])
-        if 'epoch' in line:
-            epochs.append(line['epoch'])
+        if "time" in line:
+            iter_times.append(line["time"])
+        if "data_time" in line:
+            data_times.append(line["data_time"])
+        if "memory" in line:
+            total_memory.append(line["memory"])
+        if "epoch" in line:
+            epochs.append(line["epoch"])
 
     avg_iter_time = np.average(iter_times)
     avg_data_time = np.average(data_times)
@@ -67,9 +68,9 @@ def read_train_json(json_path):
 
 
 def read_performance(perf_json):
-    with open(perf_json, 'r') as f:
+    with open(perf_json, "r") as f:
         perf_line = json.load(f)
-    return perf_line['coco/segm_mAP_50']
+    return perf_line["coco/segm_mAP_50"]
 
 
 def collect_results(folder):
@@ -88,7 +89,9 @@ def collect_results(folder):
             train_json = list(train_folder.glob("vis_data/20*.json"))[0]
 
             test_mAP = read_performance(eval_json)
-            avg_iter_time, avg_data_time, avg_gpu_meomry, total_epoch = read_train_json(train_json)
+            avg_iter_time, avg_data_time, avg_gpu_meomry, total_epoch = read_train_json(
+                train_json
+            )
             elapsed_time = read_e2e_time(train_log)
             total_time += elapsed_time
             full_string += f"{test_mAP},{elapsed_time},{avg_iter_time},{avg_gpu_meomry},{total_epoch},"
@@ -98,7 +101,7 @@ def collect_results(folder):
     print(full_string)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("folder")
     args = parser.parse_args()
