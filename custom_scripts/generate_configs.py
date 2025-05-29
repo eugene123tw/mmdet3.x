@@ -67,10 +67,18 @@ def generate_configs(
             f"val_image_prefix does not exist: {dataset_path / val_image_prefix}"
         )
 
-        _cfg.model.bbox_head.num_classes = num_classes
+        if "roi_head" in _cfg.model:
+            _cfg.model.roi_head.bbox_head.num_classes = num_classes
+            if "mask_head" in _cfg.model.roi_head:
+                _cfg.model.roi_head.mask_head.num_classes = num_classes
+        elif "bbox_head" in _cfg.model:
+            _cfg.model.bbox_head.num_classes = num_classes
         _cfg.default_hooks.checkpoint.pop("max_keep_ckpts", None)
         _cfg.default_hooks.checkpoint.save_best = "auto"
 
+        # ===== Begin: Custom Hooks =====
+        if "custom_hooks" not in _cfg:
+            _cfg.custom_hooks = []
         _cfg.custom_hooks.append(
             dict(
                 type="EarlyStoppingHook",
@@ -80,10 +88,20 @@ def generate_configs(
             ),
         )
 
+        # pop pipeline switch hook
+        custom_hooks = []
+        for hook in _cfg.custom_hooks:
+            if hook["type"] == "PipelineSwitchHook":
+                hook["switch_epoch"] = epochs - 20
+            custom_hooks.append(hook)
+        _cfg.custom_hooks = custom_hooks
+        # ===== End: Custom Hooks =====
+
         _cfg.max_epochs = epochs
         _cfg.train_cfg.max_epochs = epochs
         _cfg.train_cfg.val_interval = 1
-        _cfg.train_cfg.dynamic_intervals = [(epochs - 20, 1)]
+        if "dynamic_intervals" in _cfg.train_cfg:
+            _cfg.train_cfg.dynamic_intervals = [(epochs - 20, 1)]
 
         if _cfg.train_dataloader.batch_size != batch_size:
             print(
@@ -112,14 +130,6 @@ def generate_configs(
         #     dict(type='PackDetInputs')
         # ]
 
-        # pop pipeline switch hook
-        custom_hooks = []
-        for hook in _cfg.custom_hooks:
-            if hook["type"] == "PipelineSwitchHook":
-                hook["switch_epoch"] = epochs - 20
-            custom_hooks.append(hook)
-        _cfg.custom_hooks = custom_hooks
-
         for key, hook in _cfg.default_hooks.items():
             if key == "checkpoint":
                 hook["interval"] = 10
@@ -129,7 +139,6 @@ def generate_configs(
                 hook["interval"] = 10
                 hook["draw"] = True
 
-        #
         for scheduler in _cfg.param_scheduler:
             if scheduler.type == "CosineAnnealingLR":
                 scheduler.begin = epochs // 2
